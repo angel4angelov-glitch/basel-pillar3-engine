@@ -41,6 +41,11 @@ Note (per plan M2): most KM1/OV1 tables are **borderless**, where lattice return
 the adaptive selector falls back lattice → stream → pdfplumber. So Ghostscript is required
 only for the lattice path, not for the common borderless case.
 
+Status (chunk 2.1, shipped): `select_secondary_engine` is wired with this fallback.
+`brew install ghostscript` enables Camelot **lattice** (highest structure fidelity for
+ruled tables); without it the selector detects `gs` is absent, **skips lattice**, and uses
+Camelot **stream** or **pdfplumber** — still correct, sometimes lower structure fidelity.
+
 ### Docling / pdfplumber
 
 No system binaries required for native-text extraction. (Scanned-PDF OCR — PaddleOCR or
