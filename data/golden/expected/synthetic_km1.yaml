@@ -1,0 +1,48 @@
+# Synthetic KM1 golden — drives the key-free, PDF-free e2e gate (chunk 1.8).
+#
+# NOT a real bank. A fixed, internally-consistent KM1 the stub engine returns, with
+# its hand-checked expected values. All three ratio identities hold EXACTLY:
+#   CET1 ratio   = 48000 / 320000 * 100 = 15.0
+#   Tier 1 ratio = 56000 / 320000 * 100 = 17.5
+#   Total ratio  = 64000 / 320000 * 100 = 20.0
+# Basis axes match config/templates/km1.yaml (two-pass check, SCHEMA.md): capital
+# rows are TRANSITIONAL/NA, RWA + ratios are NA/FINAL — so nothing crosses a basis.
+bank: synthetic
+period: 2025Q4
+template: KM1
+values:
+  KM1.1:
+    value: "48000"
+    unit: GBP_M
+    ecl_basis: TRANSITIONAL
+    floor_basis: NA
+  KM1.2:
+    value: "56000"
+    unit: GBP_M
+    ecl_basis: TRANSITIONAL
+    floor_basis: NA
+  KM1.3:
+    value: "64000"
+    unit: GBP_M
+    ecl_basis: TRANSITIONAL
+    floor_basis: NA
+  KM1.4:
+    value: "320000"
+    unit: GBP_M
+    ecl_basis: NA
+    floor_basis: FINAL
+  KM1.5:
+    value: "15.0"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: FINAL
+  KM1.6:
+    value: "17.5"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: FINAL
+  KM1.7:
+    value: "20.0"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: FINAL

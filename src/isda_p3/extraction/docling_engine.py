@@ -106,7 +106,16 @@ class DoclingEngine:
             self._converter = DocumentConverter()
         return self._converter
 
-    def extract(self, pdf_path: Path, pages: Sequence[int] | None = None) -> list[RawCell]:
+    def extract_tables(
+        self, pdf_path: Path, pages: Sequence[int] | None = None
+    ) -> list[list[RawCell]]:
+        """Extract cells grouped per table (row/col indices local to each table).
+
+        Same I/O guards as :meth:`extract`: a missing file, a PDF with no tables, or
+        a page filter that matches no table all raise :class:`ExtractionError` rather
+        than returning a silent empty result (§A.2). A table that is itself empty
+        contributes an empty group — its emptiness is preserved, not dropped.
+        """
         if not pdf_path.exists():
             raise ExtractionError(f"PDF not found: {pdf_path}")
 
@@ -116,19 +125,23 @@ class DoclingEngine:
             raise ExtractionError(f"Docling found no tables in {pdf_path}")
 
         wanted = set(pages) if pages is not None else None
-        cells: list[RawCell] = []
+        groups: list[list[RawCell]] = []
         for table in tables:
             if not table.prov:
                 raise ExtractionError(f"Docling table without provenance in {pdf_path}")
             page_no = table.prov[0].page_no
             if wanted is not None and page_no not in wanted:
                 continue
-            cells.extend(cells_from_docling_table(table, page_no))
+            groups.append(cells_from_docling_table(table, page_no))
 
         # A non-empty PDF whose tables all fall outside the requested pages must not
         # masquerade as a clean empty extraction (silent-failure guard, §A.2).
-        if wanted is not None and not cells:
+        if wanted is not None and not groups:
             raise ExtractionError(
                 f"Docling found tables in {pdf_path} but none on pages {sorted(wanted)}"
             )
-        return cells
+        return groups
+
+    def extract(self, pdf_path: Path, pages: Sequence[int] | None = None) -> list[RawCell]:
+        """Flat view of :meth:`extract_tables` — every table's cells concatenated."""
+        return [cell for group in self.extract_tables(pdf_path, pages) for cell in group]
