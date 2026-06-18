@@ -1,0 +1,27 @@
+# identities.yaml — per-template reconciliation identity STRUCTURE (chunk 1.5).
+#
+# Declares WHICH fields are arithmetically related, not the tolerances (those live
+# in reconciliation.yaml). Each ratio identity pins every operand to an explicit
+# (ecl, floor) basis: the engine refuses to evaluate if a supplied FieldValue's
+# actual basis differs (CrossBasisError), so pre-floor RWA can never be paired into
+# a final-ratio identity (CLAUDE.md §A C1 — a cross-basis pairing is a config/data
+# error, not a tolerance miss). Tolerance only absorbs rounding (inputs €m, ratios
+# to 1 dp).
+KM1:
+  ratio_identities:
+    # KM1.5 CET1 ratio = CET1 capital / RWA ×100  (final-with-final)
+    - ratio:       {code: KM1.5, ecl: NA,           floor: FINAL}
+      numerator:   {code: KM1.1, ecl: TRANSITIONAL, floor: NA}
+      denominator: {code: KM1.4, ecl: NA,           floor: FINAL}
+      factor: 100
+    # KM1.6 Tier 1 ratio = Tier 1 capital / RWA ×100
+    - ratio:       {code: KM1.6, ecl: NA,           floor: FINAL}
+      numerator:   {code: KM1.2, ecl: TRANSITIONAL, floor: NA}
+      denominator: {code: KM1.4, ecl: NA,           floor: FINAL}
+      factor: 100
+    # KM1.7 Total capital ratio = Total capital / RWA ×100
+    - ratio:       {code: KM1.7, ecl: NA,           floor: FINAL}
+      numerator:   {code: KM1.3, ecl: TRANSITIONAL, floor: NA}
+      denominator: {code: KM1.4, ecl: NA,           floor: FINAL}
+      factor: 100
+  cross_foots: []          # KM1 has none; OV1 gets risk-row → total-RWA foots in chunk 2.3

@@ -1,5 +1,16 @@
 # reconciliation.yaml — per-check tolerances + confidence weights.
-# Populated in chunk 1.5/1.6.
-# TODO(1.5): tolerances per check, confidence weights.
-tolerances: {}
-confidence_weights: {}
+#
+# tolerances: absorb rounding ONLY (inputs in €m, ratios disclosed to 1 dp).
+#   ratio_identity.bp — allowed gap between stated and computed ratio, in basis
+#     points (10 bp = 0.10 percentage points).
+#   cross_foot.abs/rel — components-sum vs total gap, max(abs, rel×|total|).
+# confidence: weights consumed by reconcile/confidence.py in chunk 1.6 (placeholder
+#   values here; a hard FAIL drives confidence to 0 so it dominates the product).
+tolerances:
+  ratio_identity: {bp: 10}
+  cross_foot: {abs: 1.0, rel: 0.001}
+confidence:
+  pass: 1.0
+  skip: 0.97
+  ratio_identity_fail: 0.0
+  cross_foot_fail: 0.0
