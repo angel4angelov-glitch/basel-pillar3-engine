@@ -1,0 +1,34 @@
+# km1.yaml — KM1 "Key metrics" canonical field SKELETON (chunk 0.4, loader proof).
+#
+# Each field: code, row_label_aliases (≥1 strings used by rule-first mapping),
+# unit (∈ models.Unit), ecl_basis (IFRS 9 phase-in axis), floor_basis (CRR3
+# output-floor axis). The two basis axes are orthogonal and pin identities to a
+# single basis (CLAUDE.md §A C1).
+#
+# Monetary `unit` is placeholder EUR_M here — the per-bank reporting currency is
+# resolved at mapping time against banks.yaml. This file is intentionally minimal:
+# the FULL KM1 field set lands in chunk 1.3.
+template: KM1
+fields:
+  - code: KM1.1
+    row_label_aliases:
+      - "Common Equity Tier 1 (CET1) capital"
+      - "CET1 capital"
+    unit: EUR_M
+    ecl_basis: FULLY_LOADED
+    floor_basis: NA
+  - code: KM1.4
+    row_label_aliases:
+      - "Total risk-weighted assets (RWA)"
+      - "Total risk-weighted exposure amount"
+      - "Total RWA"
+    unit: EUR_M
+    ecl_basis: NA
+    floor_basis: FINAL
+  - code: KM1.5
+    row_label_aliases:
+      - "Common Equity Tier 1 ratio (%)"
+      - "CET1 ratio"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: FINAL

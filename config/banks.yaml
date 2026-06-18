@@ -1,4 +1,203 @@
-# banks.yaml — G-SIB roster (id, name, jurisdiction, ir_url, p3dh_lei,
-# number_locale, reporting_currency). Populated in chunk 0.4.
-# TODO(0.4): full G-SIB dealer-bank roster.
-banks: []
+# banks.yaml — G-SIB dealer-bank roster (the ISDA benchmarking universe).
+#
+# Each entry: id, name, jurisdiction (∈ models.Jurisdiction), ir_url, p3dh_lei,
+# number_locale, reporting_currency (ISO 4217). Proves "Nth bank = config, not
+# code" (CLAUDE.md §A.5). China G-SIBs are intentionally excluded — outside the
+# current Jurisdiction enum; add later.
+#
+# p3dh_lei is null for ALL banks: LEIs are populated later from GLEIF, never
+# guessed (data-integrity project — CLAUDE.md §A).
+#
+# Currency traps are deliberate: HSBC, Standard Chartered and UBS report in USD,
+# not their home currency.
+#
+# ir_url is the bank's main corporate domain, best-effort.
+# TODO verify disclosures page  (the exact Pillar 3 / regulatory-disclosure URL
+# per bank is resolved by the discovery box, not pinned here).
+banks:
+  # --- UK ---------------------------------------------------------------------
+  - id: hsbc
+    name: HSBC Holdings
+    jurisdiction: UK
+    ir_url: https://www.hsbc.com
+    p3dh_lei: null
+    number_locale: en_GB
+    reporting_currency: USD
+  - id: barclays
+    name: Barclays
+    jurisdiction: UK
+    ir_url: https://home.barclays
+    p3dh_lei: null
+    number_locale: en_GB
+    reporting_currency: GBP
+  - id: standard-chartered
+    name: Standard Chartered
+    jurisdiction: UK
+    ir_url: https://www.sc.com
+    p3dh_lei: null
+    number_locale: en_GB
+    reporting_currency: USD
+
+  # --- US ---------------------------------------------------------------------
+  - id: jpmorgan
+    name: JPMorgan Chase
+    jurisdiction: US
+    ir_url: https://www.jpmorganchase.com
+    p3dh_lei: null
+    number_locale: en_US
+    reporting_currency: USD
+  - id: bofa
+    name: Bank of America
+    jurisdiction: US
+    ir_url: https://www.bankofamerica.com
+    p3dh_lei: null
+    number_locale: en_US
+    reporting_currency: USD
+  - id: citi
+    name: Citigroup
+    jurisdiction: US
+    ir_url: https://www.citigroup.com
+    p3dh_lei: null
+    number_locale: en_US
+    reporting_currency: USD
+  - id: goldman-sachs
+    name: Goldman Sachs
+    jurisdiction: US
+    ir_url: https://www.goldmansachs.com
+    p3dh_lei: null
+    number_locale: en_US
+    reporting_currency: USD
+  - id: morgan-stanley
+    name: Morgan Stanley
+    jurisdiction: US
+    ir_url: https://www.morganstanley.com
+    p3dh_lei: null
+    number_locale: en_US
+    reporting_currency: USD
+  - id: wells-fargo
+    name: Wells Fargo
+    jurisdiction: US
+    ir_url: https://www.wellsfargo.com
+    p3dh_lei: null
+    number_locale: en_US
+    reporting_currency: USD
+  - id: bny-mellon
+    name: Bank of New York Mellon
+    jurisdiction: US
+    ir_url: https://www.bny.com
+    p3dh_lei: null
+    number_locale: en_US
+    reporting_currency: USD
+  - id: state-street
+    name: State Street
+    jurisdiction: US
+    ir_url: https://www.statestreet.com
+    p3dh_lei: null
+    number_locale: en_US
+    reporting_currency: USD
+
+  # --- EU ---------------------------------------------------------------------
+  - id: bnp-paribas
+    name: BNP Paribas
+    jurisdiction: EU
+    ir_url: https://group.bnpparibas
+    p3dh_lei: null
+    number_locale: fr_FR
+    reporting_currency: EUR
+  - id: deutsche-bank
+    name: Deutsche Bank
+    jurisdiction: EU
+    ir_url: https://www.db.com
+    p3dh_lei: null
+    number_locale: de_DE
+    reporting_currency: EUR
+  - id: credit-agricole
+    name: Groupe Crédit Agricole
+    jurisdiction: EU
+    ir_url: https://www.credit-agricole.com
+    p3dh_lei: null
+    number_locale: fr_FR
+    reporting_currency: EUR
+  - id: santander
+    name: Banco Santander
+    jurisdiction: EU
+    ir_url: https://www.santander.com
+    p3dh_lei: null
+    number_locale: es_ES
+    reporting_currency: EUR
+  - id: societe-generale
+    name: Société Générale
+    jurisdiction: EU
+    ir_url: https://www.societegenerale.com
+    p3dh_lei: null
+    number_locale: fr_FR
+    reporting_currency: EUR
+  - id: groupe-bpce
+    name: Groupe BPCE
+    jurisdiction: EU
+    ir_url: https://groupebpce.com
+    p3dh_lei: null
+    number_locale: fr_FR
+    reporting_currency: EUR
+  - id: ing
+    name: ING Group
+    jurisdiction: EU
+    ir_url: https://www.ing.com
+    p3dh_lei: null
+    number_locale: nl_NL
+    reporting_currency: EUR
+  - id: unicredit
+    name: UniCredit
+    jurisdiction: EU
+    ir_url: https://www.unicreditgroup.eu
+    p3dh_lei: null
+    number_locale: it_IT
+    reporting_currency: EUR
+
+  # --- CH ---------------------------------------------------------------------
+  - id: ubs
+    name: UBS Group
+    jurisdiction: CH
+    ir_url: https://www.ubs.com
+    p3dh_lei: null
+    number_locale: de_CH
+    reporting_currency: USD
+
+  # --- JP ---------------------------------------------------------------------
+  - id: mufg
+    name: Mitsubishi UFJ FG
+    jurisdiction: JP
+    ir_url: https://www.mufg.jp
+    p3dh_lei: null
+    number_locale: ja_JP
+    reporting_currency: JPY
+  - id: mizuho
+    name: Mizuho FG
+    jurisdiction: JP
+    ir_url: https://www.mizuhogroup.com
+    p3dh_lei: null
+    number_locale: ja_JP
+    reporting_currency: JPY
+  - id: smfg
+    name: Sumitomo Mitsui FG
+    jurisdiction: JP
+    ir_url: https://www.smfg.co.jp
+    p3dh_lei: null
+    number_locale: ja_JP
+    reporting_currency: JPY
+
+  # --- CA ---------------------------------------------------------------------
+  - id: rbc
+    name: Royal Bank of Canada
+    jurisdiction: CA
+    ir_url: https://www.rbc.com
+    p3dh_lei: null
+    number_locale: en_CA
+    reporting_currency: CAD
+  - id: td
+    name: Toronto-Dominion
+    jurisdiction: CA
+    ir_url: https://www.td.com
+    p3dh_lei: null
+    number_locale: en_CA
+    reporting_currency: CAD
