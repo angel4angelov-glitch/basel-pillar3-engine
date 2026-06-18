@@ -22,8 +22,8 @@ verification-before-completion (run the verify cmd, paste real output) → /comm
 
 ## M0 — Skeleton
 - [x] **0.1 Repo + tooling** (`42ac73e`) — git init; `pyproject.toml` (py≥3.11, ruff len100, pytest markers); `requirements*.txt`; `src/isda_p3/` dir tree (stubs); `.github/workflows/ci.yml`; `.env.example`. **Verify:** `ruff check . && pytest -q`. Skills: `python-patterns`.
-- [ ] **0.2 config.py** — port boe-rag pattern: `Paths`, module constants, `setup_logging()`. **Verify:** `pytest tests/unit/test_config.py`. Skills: `python-reviewer`.
-- [ ] **0.3 models.py** — all frozen dataclasses + StrEnums (incl. `ecl_basis`/`floor_basis`, `MappingDecision`, `Provenance`, `FieldValue`, `RawCell`, `CheckResult`, `ReconciliationResult`, `DatasetRow`, `ManifestRow`). **Verify:** `pytest tests/unit/test_models.py` (frozen + `ReportingPeriod("2025Q4").label`). Skills: `python-reviewer`, `numerical-finance-stability`.
+- [x] **0.2 config.py** (`917d9ad`) — port boe-rag pattern: `Paths`, module constants, `setup_logging()`. **Verify:** `pytest tests/unit/test_config.py`. Skills: `python-reviewer`.
+- [x] **0.3 models.py** — all frozen dataclasses + StrEnums (incl. `ecl_basis`/`floor_basis`, `MappingDecision`, `Provenance`, `FieldValue`, `RawCell`, `CheckResult`, `ReconciliationResult`, `DatasetRow`, `ManifestRow`). **Verify:** `pytest tests/unit/test_models.py` (frozen + `ReportingPeriod("2025Q4").label`). Skills: `python-reviewer`, `numerical-finance-stability`.
 - [ ] **0.4 config loaders** — `banks.yaml` (full G-SIB roster + `number_locale`, `reporting_currency`) + `templates/{km1,ov1}.yaml` loaders → typed objects. **Verify:** `pytest tests/unit/test_config_load.py`.
 - [ ] **0.5 extraction env smoke** — install Docling + Camelot. **Verify:** `python -c "from docling.document_converter import DocumentConverter; print('ok')"`.
 
