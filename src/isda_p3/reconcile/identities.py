@@ -203,7 +203,7 @@ def load_tolerances(
 # Keys :func:`isda_p3.reconcile.confidence.compute_confidence` may look up — every
 # outcome path must have a weight, so absence is a hard config error caught at load.
 _REQUIRED_WEIGHTS = frozenset(
-    {"pass", "skip", "unchecked", "ratio_identity_fail", "cross_foot_fail"}
+    {"pass", "skip", "unchecked", "ratio_identity_fail", "cross_foot_fail", "two_engine_fail"}
 )
 
 

@@ -23,7 +23,7 @@ from ..models import (
     Template,
     ValidationStatus,
 )
-from .checks import cross_foot, ratio_identity
+from .checks import cross_foot, ratio_identity, two_engine_agreement
 from .confidence import compute_confidence
 from .identities import load_identities
 
@@ -81,8 +81,10 @@ def reconcile_template(
 ) -> list[ReconciliationResult]:
     """Run a template's identities over ``values`` and route every field.
 
-    Builds the full check set (ratio identities + cross-foots) once, then scores
-    each field against the checks that reference it. A :class:`CrossBasisError`
+    Builds the full check set (cross-field ratio identities + cross-foots, plus a
+    per-field two-engine agreement) once, then scores each field against the checks
+    that reference it. Identity checks are cross-field; two-engine is per-field — both
+    flow through ``applicable_checks`` by ``field_code`` (M2). A :class:`CrossBasisError`
     raised by a check propagates (a config/data error, never swallowed — C1).
     """
     ident = load_identities(template)
@@ -90,6 +92,8 @@ def reconcile_template(
         ratio_tol = tolerances["ratio_identity"]["bp"]
         cf_abs = tolerances["cross_foot"]["abs"]
         cf_rel = tolerances["cross_foot"]["rel"]
+        te_abs = tolerances["two_engine"]["abs"]
+        te_rel = tolerances["two_engine"]["rel"]
     except KeyError as exc:
         raise ValueError(
             f"reconcile_template({template.value}): missing tolerance key {exc} "
@@ -100,5 +104,6 @@ def reconcile_template(
         ratio_identity(values, ri, ratio_tol) for ri in ident.ratio_identities
     ]
     all_checks += [cross_foot(values, cf, cf_abs, cf_rel) for cf in ident.cross_foots]
+    all_checks += [two_engine_agreement(fv, te_abs, te_rel) for fv in values.values()]
 
     return [reconcile_field(fv, all_checks, weights, threshold) for fv in values.values()]

@@ -8,13 +8,19 @@
 #   PRODUCT. A hard FAIL (0.0) drives confidence to 0 so it dominates the product;
 #   `unchecked` (0.90) is the baseline for a field NO check touched — an unvalidated
 #   number must not auto-accept (< the 0.95 auto-accept threshold), so it routes to
-#   review (CLAUDE.md §A.2). The two-engine factor is added in chunk 2.2.
+#   review (CLAUDE.md §A.2).
+#   two_engine: post-mapping agreement between Docling (canonical) and the secondary
+#     engine, compared at FieldValue level (max(abs, rel×|primary|)). A disagreement
+#     is a strong misread signal — `two_engine_fail` (0.5) pushes the field below 0.95
+#     (→ review) but not to 0.0, since one engine may still be right (chunk 2.2 / M2).
 tolerances:
   ratio_identity: {bp: 10}
   cross_foot: {abs: 1.0, rel: 0.001}
+  two_engine: {abs: 1.0, rel: 0.0005}
 confidence:
   pass: 1.0
   skip: 0.97
   unchecked: 0.90
   ratio_identity_fail: 0.0
   cross_foot_fail: 0.0
+  two_engine_fail: 0.5

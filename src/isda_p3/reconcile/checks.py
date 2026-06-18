@@ -136,3 +136,67 @@ def cross_foot(
         tolerance=tol,
         detail=f"{cf.total} stated {total} vs components sum {components_sum} (±{tol})",
     )
+
+
+def two_engine_agreement(fv: FieldValue, abs_tol: Decimal, rel_tol: Decimal) -> CheckResult:
+    """Cross-check the canonical value against every *other* engine's value (M2).
+
+    A per-field check (``field_codes=(fv.field_code,)``), run post-mapping: the two
+    engines segment grids differently, so we compare the FINAL mapped numbers by
+    ``field_code``, never by raw cell. The primary (Docling) value stays canonical;
+    each other engine in ``engine_values`` is an independent opinion.
+
+    SKIP if no *other* engine contributed a value (a single opinion is not a failed
+    check — there is nothing to cross-check against). Otherwise PASS iff *all* other
+    engines agree with the primary within ``max(abs_tol, rel_tol×|primary|)``; else
+    FAIL, with the detail naming the disagreeing engines and their values. A
+    disagreement is a strong misread signal (its confidence weight pushes the field
+    below auto-accept), but it is not fatal on its own — one engine may still be right
+    (CLAUDE.md §A.2). Basing the SKIP on "≥1 other engine" rather than a raw count
+    makes the single-opinion case explicit and forecloses a vacuous PASS over an
+    empty comparison set.
+    """
+    codes = (fv.field_code,)
+    primary = fv.value
+    primary_engine = fv.provenance.engine
+    others = {e: v for e, v in fv.engine_values.items() if e != primary_engine}
+
+    if not others:
+        return CheckResult(
+            check_type=CheckType.TWO_ENGINE,
+            outcome=CheckOutcome.SKIP,
+            field_codes=codes,
+            expected=None,
+            actual=primary,
+            tolerance=None,
+            detail=(
+                f"SKIP: only the primary engine ({primary_engine.value}) for "
+                f"{fv.field_code} — need a second engine to cross-check"
+            ),
+        )
+
+    tol = max(abs_tol, rel_tol * abs(primary))
+    disagreeing = {e: v for e, v in others.items() if abs(v - primary) > tol}
+
+    if disagreeing:
+        gaps = ", ".join(f"{e.value}={v}" for e, v in disagreeing.items())
+        return CheckResult(
+            check_type=CheckType.TWO_ENGINE,
+            outcome=CheckOutcome.FAIL,
+            field_codes=codes,
+            expected=None,
+            actual=primary,
+            tolerance=tol,
+            detail=f"{fv.field_code}: {primary_engine.value}={primary} disagrees with {gaps} (±{tol})",
+        )
+
+    agree = ", ".join(f"{e.value}={v}" for e, v in others.items())
+    return CheckResult(
+        check_type=CheckType.TWO_ENGINE,
+        outcome=CheckOutcome.PASS,
+        field_codes=codes,
+        expected=None,
+        actual=primary,
+        tolerance=tol,
+        detail=f"{fv.field_code}: {primary_engine.value}={primary} agrees with {agree} (±{tol})",
+    )

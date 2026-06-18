@@ -28,7 +28,12 @@ from isda_p3.models import (
     Template,
     Unit,
 )
-from isda_p3.reconcile.checks import CrossBasisError, cross_foot, ratio_identity
+from isda_p3.reconcile.checks import (
+    CrossBasisError,
+    cross_foot,
+    ratio_identity,
+    two_engine_agreement,
+)
 from isda_p3.reconcile.identities import (
     CrossFoot,
     Operand,
@@ -250,6 +255,135 @@ def test_cross_foot_skip_missing_component():
     assert "C" in r.detail
 
 
+# --- two_engine_agreement: post-mapping FieldValue-level cross-check (chunk 2.2) -
+
+_TE_ABS = Decimal("1.0")
+_TE_REL = Decimal("0.0005")
+
+
+def _fv_engines(code: str, value: str, engine_values: dict[Engine, Decimal]) -> FieldValue:
+    """A FieldValue whose canonical value is the DOCLING (primary, per ``_PROV``) value
+    but which carries ``engine_values`` from one or more engines for the cross-check."""
+    return FieldValue(
+        template=Template.KM1,
+        field_code=code,
+        value=Decimal(value),
+        unit=Unit.GBP_M,
+        ecl_basis=EclBasis.NA,
+        floor_basis=FloorBasis.NA,
+        provenance=_PROV,  # engine=DOCLING — the canonical/primary engine
+        mapping=_MAP,
+        raw_text=value,
+        engine_values=engine_values,
+    )
+
+
+def test_two_engine_agreement_pass_exact():
+    fv = _fv_engines(
+        "KM1.4", "368000", {Engine.DOCLING: Decimal("368000"), Engine.CAMELOT: Decimal("368000")}
+    )
+    r = two_engine_agreement(fv, _TE_ABS, _TE_REL)
+    assert r.outcome is CheckOutcome.PASS
+    assert r.check_type is CheckType.TWO_ENGINE
+    assert r.field_codes == ("KM1.4",)
+
+
+def test_two_engine_agreement_pass_within_tolerance():
+    # diff 0.4 ≤ max(1.0, 0.0005×368000=184) → PASS (rounding-scale wobble allowed).
+    fv = _fv_engines(
+        "KM1.4", "368000.4", {Engine.DOCLING: Decimal("368000.4"), Engine.CAMELOT: Decimal("368000")}
+    )
+    r = two_engine_agreement(fv, _TE_ABS, _TE_REL)
+    assert r.outcome is CheckOutcome.PASS
+
+
+def test_two_engine_agreement_fail_detail_shows_both():
+    # 13.6 vs 13.8, tol = max(1.0, 0.0005×13.6=0.0068) = 1.0; diff 0.2 ≤ 1.0?? No —
+    # use values whose gap clearly exceeds tol to force a FAIL with both shown.
+    fv = _fv_engines(
+        "KM1.5", "13.6", {Engine.DOCLING: Decimal("13.6"), Engine.CAMELOT: Decimal("15.8")}
+    )
+    r = two_engine_agreement(fv, _TE_ABS, _TE_REL)
+    assert r.outcome is CheckOutcome.FAIL
+    assert r.field_codes == ("KM1.5",)
+    # the detail names the disagreeing engines AND both values
+    assert "DOCLING" in r.detail
+    assert "CAMELOT" in r.detail
+    assert "13.6" in r.detail
+    assert "15.8" in r.detail
+
+
+def test_two_engine_agreement_fail_just_outside_tol():
+    # abs gap 1.01 > max(1.0, 0.0005×100=0.05) = 1.0 → FAIL.
+    fv = _fv_engines(
+        "X", "100", {Engine.DOCLING: Decimal("100"), Engine.CAMELOT: Decimal("101.01")}
+    )
+    r = two_engine_agreement(fv, _TE_ABS, _TE_REL)
+    assert r.outcome is CheckOutcome.FAIL
+
+
+def test_two_engine_agreement_boundary_exact_passes():
+    # abs gap exactly 1.0 == tol → PASS (≤, not <).
+    fv = _fv_engines(
+        "X", "100", {Engine.DOCLING: Decimal("100"), Engine.CAMELOT: Decimal("101")}
+    )
+    r = two_engine_agreement(fv, _TE_ABS, _TE_REL)
+    assert r.outcome is CheckOutcome.PASS
+
+
+def test_two_engine_agreement_skip_single_engine():
+    # Only one opinion → SKIP (not a failed check): nothing to cross-check against.
+    fv = _fv_engines("KM1.4", "368000", {Engine.DOCLING: Decimal("368000")})
+    r = two_engine_agreement(fv, _TE_ABS, _TE_REL)
+    assert r.outcome is CheckOutcome.SKIP
+    assert r.field_codes == ("KM1.4",)
+    assert r.tolerance is None
+
+
+def test_two_engine_agreement_skip_only_primary_engine_present():
+    # SKIP keys on "≥1 OTHER engine", not a raw count: a lone primary entry SKIPs
+    # (its engine == provenance engine), foreclosing a vacuous PASS over an empty set.
+    fv = _fv_engines("KM1.4", "368000", {Engine.DOCLING: Decimal("368000")})
+    r = two_engine_agreement(fv, _TE_ABS, _TE_REL)
+    assert r.outcome is CheckOutcome.SKIP
+    assert "primary engine" in r.detail.lower() or "DOCLING" in r.detail
+
+
+def test_two_engine_agreement_runs_when_only_a_non_primary_engine_present():
+    # provenance engine is DOCLING (canonical fv.value) but engine_values holds only a
+    # CAMELOT entry → there IS a second opinion → the check runs (canonical vs CAMELOT).
+    fv = _fv_engines("KM1.4", "368000", {Engine.CAMELOT: Decimal("368000")})
+    r = two_engine_agreement(fv, _TE_ABS, _TE_REL)
+    assert r.outcome is CheckOutcome.PASS
+    assert "CAMELOT" in r.detail
+
+
+def test_two_engine_agreement_three_engines_one_disagrees_fails():
+    # primary agrees with CAMELOT but PDFPLUMBER is off → FAIL, naming only the outlier.
+    fv = _fv_engines(
+        "X",
+        "100",
+        {
+            Engine.DOCLING: Decimal("100"),
+            Engine.CAMELOT: Decimal("100"),
+            Engine.PDFPLUMBER: Decimal("250"),
+        },
+    )
+    r = two_engine_agreement(fv, _TE_ABS, _TE_REL)
+    assert r.outcome is CheckOutcome.FAIL
+    assert "PDFPLUMBER" in r.detail
+    assert "250" in r.detail
+
+
+def test_two_engine_agreement_value_is_decimal():
+    fv = _fv_engines(
+        "X", "100", {Engine.DOCLING: Decimal("100"), Engine.CAMELOT: Decimal("100")}
+    )
+    r = two_engine_agreement(fv, _TE_ABS, _TE_REL)
+    assert isinstance(r.actual, Decimal)
+    assert isinstance(r.tolerance, Decimal)
+
+
 # --- loaders -------------------------------------------------------------------
 
 
@@ -303,6 +437,9 @@ def test_load_tolerances():
     assert tol["cross_foot"]["rel"] == Decimal("0.001")
     assert isinstance(tol["cross_foot"]["abs"], Decimal)
     assert isinstance(tol["cross_foot"]["rel"], Decimal)
+    assert tol["two_engine"]["abs"] == Decimal("1.0")
+    assert tol["two_engine"]["rel"] == Decimal("0.0005")
+    assert isinstance(tol["two_engine"]["rel"], Decimal)
 
 
 # --- loader fail-fast on malformed config --------------------------------------
