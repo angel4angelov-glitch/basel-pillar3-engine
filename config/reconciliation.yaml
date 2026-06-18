@@ -1,0 +1,5 @@
+# reconciliation.yaml — per-check tolerances + confidence weights.
+# Populated in chunk 1.5/1.6.
+# TODO(1.5): tolerances per check, confidence weights.
+tolerances: {}
+confidence_weights: {}

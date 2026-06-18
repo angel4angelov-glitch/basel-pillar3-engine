@@ -1,0 +1,4 @@
+# banks.yaml — G-SIB roster (id, name, jurisdiction, ir_url, p3dh_lei,
+# number_locale, reporting_currency). Populated in chunk 0.4.
+# TODO(0.4): full G-SIB dealer-bank roster.
+banks: []

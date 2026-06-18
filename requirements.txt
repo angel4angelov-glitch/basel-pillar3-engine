@@ -1,0 +1,13 @@
+docling
+camelot-py[base]
+pdfplumber
+pydantic>=2
+anthropic
+langchain-anthropic
+pandas
+pyarrow
+scipy
+pyyaml
+python-dotenv
+requests
+tenacity

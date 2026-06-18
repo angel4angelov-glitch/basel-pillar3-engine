@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets
+.env
+
+# Data — ignore generated contents, keep dir placeholders and the checked-in
+# golden set. data/golden/ is intentionally NOT listed below: all its contents
+# (PDFs + expected YAML) are tracked. Do not add a data/golden/* rule.
+data/raw/*
+data/registry/*
+data/extracted/*
+data/dataset/*
+data/review_queue/*
+!data/**/.gitkeep
