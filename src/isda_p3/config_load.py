@@ -16,6 +16,7 @@ from typing import TypeVar
 import yaml
 
 from isda_p3.config import Paths
+from isda_p3.mapping.normalise import SUPPORTED_LOCALES
 from isda_p3.models import (
     Bank,
     EclBasis,
@@ -136,6 +137,12 @@ def load_banks(path: Path = Paths.CONFIG / "banks.yaml") -> tuple[Bank, ...]:
             val = entry[key]
             if not (isinstance(val, str) and val.strip()):
                 raise ValueError(f"bank {bank_id!r}: {key!r} must be a non-empty string")
+
+        if entry["number_locale"] not in SUPPORTED_LOCALES:
+            raise ValueError(
+                f"bank {bank_id!r}: number_locale {entry['number_locale']!r} is not supported "
+                f"(known: {', '.join(sorted(SUPPORTED_LOCALES))})"
+            )
 
         lei = entry.get("p3dh_lei")
         if lei is not None and not (isinstance(lei, str) and lei.strip()):

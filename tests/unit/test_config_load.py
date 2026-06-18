@@ -134,6 +134,22 @@ def test_load_banks_empty_name_raises(tmp_path):
         load_banks(path)
 
 
+def test_load_banks_unknown_locale_raises(tmp_path):
+    # A bogus number_locale must fail fast at config load — not silently surface
+    # later as "every field unmatched" because normalise() rejects the locale.
+    bad = {**_GOOD_ENTRY, "id": "badlocale", "number_locale": "xx_ZZ"}
+    path = _write_banks(tmp_path, [bad])
+    with pytest.raises(ValueError, match="badlocale"):
+        load_banks(path)
+
+
+def test_load_banks_real_roster_locales_all_supported():
+    # The shipped roster must only use locales normalise() can actually parse.
+    from isda_p3.mapping.normalise import SUPPORTED_LOCALES
+
+    assert all(b.number_locale in SUPPORTED_LOCALES for b in load_banks())
+
+
 # --- load_template -------------------------------------------------------------
 
 

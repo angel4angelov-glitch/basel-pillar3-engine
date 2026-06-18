@@ -46,6 +46,11 @@ _LOCALES: dict[str, tuple[str, frozenset[str]]] = {
     "fr_FR": (",", frozenset(_FR_SPACES)),
 }
 
+# Public allow-list of locales this module can parse. config_load validates each
+# bank's ``number_locale`` against this so an unsupported locale fails fast at
+# config load rather than silently surfacing later as "every field unmatched".
+SUPPORTED_LOCALES: frozenset[str] = frozenset(_LOCALES)
+
 # --- cleaning constants ----------------------------------------------------------
 
 _PLACEHOLDERS = {"n/a", "na"}
