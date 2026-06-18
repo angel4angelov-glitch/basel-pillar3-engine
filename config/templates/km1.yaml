@@ -1,34 +1,64 @@
-# km1.yaml — KM1 "Key metrics" canonical field SKELETON (chunk 0.4, loader proof).
+# km1.yaml — KM1 "Key metrics" canonical field set (chunk 1.3).
 #
-# Each field: code, row_label_aliases (≥1 strings used by rule-first mapping),
-# unit (∈ models.Unit), ecl_basis (IFRS 9 phase-in axis), floor_basis (CRR3
+# Each field: code, row_label_aliases (≥2 real-world label variants used by the
+# rule-first mapper — exact normalised-equality match, no substrings), kind
+# (currency-agnostic FieldKind; the concrete Unit is resolved per bank at mapping
+# time via models.unit_for), ecl_basis (IFRS 9 phase-in axis), floor_basis (CRR3
 # output-floor axis). The two basis axes are orthogonal and pin identities to a
 # single basis (CLAUDE.md §A C1).
 #
-# Monetary `unit` is placeholder EUR_M here — the per-bank reporting currency is
-# resolved at mapping time against banks.yaml. This file is intentionally minimal:
-# the FULL KM1 field set lands in chunk 1.3.
+# Headline rows only (capital, RWA, ratios). Buffer/leverage/LCR rows land later.
+# CRR3 per-tier cadence + output-floor labels to be confirmed vs EBA ITS 2024/3172.
 template: KM1
 fields:
   - code: KM1.1
     row_label_aliases:
       - "Common Equity Tier 1 (CET1) capital"
       - "CET1 capital"
-    unit: EUR_M
-    ecl_basis: FULLY_LOADED
+    kind: MONETARY
+    ecl_basis: TRANSITIONAL
+    floor_basis: NA
+  - code: KM1.2
+    row_label_aliases:
+      - "Tier 1 capital"
+      - "Tier 1 (T1) capital"
+    kind: MONETARY
+    ecl_basis: TRANSITIONAL
+    floor_basis: NA
+  - code: KM1.3
+    row_label_aliases:
+      - "Total capital"
+      - "Total own funds"
+    kind: MONETARY
+    ecl_basis: TRANSITIONAL
     floor_basis: NA
   - code: KM1.4
     row_label_aliases:
-      - "Total risk-weighted assets (RWA)"
       - "Total risk-weighted exposure amount"
-      - "Total RWA"
-    unit: EUR_M
+      - "Total risk-weighted assets (RWA)"
+      - "Total RWEA"
+    kind: MONETARY
     ecl_basis: NA
     floor_basis: FINAL
   - code: KM1.5
     row_label_aliases:
       - "Common Equity Tier 1 ratio (%)"
+      - "CET1 ratio (%)"
       - "CET1 ratio"
-    unit: PERCENT
+    kind: PERCENT
+    ecl_basis: NA
+    floor_basis: FINAL
+  - code: KM1.6
+    row_label_aliases:
+      - "Tier 1 ratio (%)"
+      - "Tier 1 capital ratio (%)"
+    kind: PERCENT
+    ecl_basis: NA
+    floor_basis: FINAL
+  - code: KM1.7
+    row_label_aliases:
+      - "Total capital ratio (%)"
+      - "Total capital ratio"
+    kind: PERCENT
     ecl_basis: NA
     floor_basis: FINAL

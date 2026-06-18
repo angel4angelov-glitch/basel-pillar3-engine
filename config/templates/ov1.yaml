@@ -1,28 +1,28 @@
 # ov1.yaml — OV1 "Overview of RWA" canonical field SKELETON (chunk 0.4, loader proof).
 #
 # Same shape as km1.yaml. RWA rows are post-output-floor (floor_basis: FINAL) and
-# have no ECL phase-in axis (ecl_basis: NA). Monetary `unit` is placeholder EUR_M;
-# per-bank currency is resolved at mapping time. FULL OV1 field set lands in chunk 2.3.
+# have no ECL phase-in axis (ecl_basis: NA). `kind: MONETARY` is currency-agnostic;
+# the per-bank Unit is resolved at mapping time. FULL OV1 field set lands in chunk 2.3.
 template: OV1
 fields:
   - code: OV1.1
     row_label_aliases:
       - "Credit risk (excluding counterparty credit risk)"
       - "Credit risk"
-    unit: EUR_M
+    kind: MONETARY
     ecl_basis: NA
     floor_basis: FINAL
   - code: OV1.6
     row_label_aliases:
       - "Counterparty credit risk (CCR)"
       - "Counterparty credit risk"
-    unit: EUR_M
+    kind: MONETARY
     ecl_basis: NA
     floor_basis: FINAL
   - code: OV1.29
     row_label_aliases:
       - "Total"
       - "Total risk-weighted exposure amount"
-    unit: EUR_M
+    kind: MONETARY
     ecl_basis: NA
     floor_basis: FINAL

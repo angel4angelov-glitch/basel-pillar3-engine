@@ -21,10 +21,10 @@ from isda_p3.config_load import (
 from isda_p3.models import (
     Bank,
     EclBasis,
+    FieldKind,
     FloorBasis,
     Jurisdiction,
     Template,
-    Unit,
 )
 
 # --- a known-good single bank entry, mutated per-test for the failure cases ----
@@ -161,7 +161,7 @@ def test_load_template_by_code_hit_and_miss():
 
 def test_load_template_enums_are_typed():
     for f in load_template(Template.KM1).fields:
-        assert isinstance(f.unit, Unit)
+        assert isinstance(f.kind, FieldKind)
         assert isinstance(f.ecl_basis, EclBasis)
         assert isinstance(f.floor_basis, FloorBasis)
         assert isinstance(f.row_label_aliases, tuple)
@@ -196,12 +196,12 @@ def test_load_template_duplicate_code_raises(tmp_path, monkeypatch):
         fields:
           - code: KM1.1
             row_label_aliases: ["CET1 capital"]
-            unit: EUR_M
+            kind: MONETARY
             ecl_basis: FULLY_LOADED
             floor_basis: NA
           - code: KM1.1
             row_label_aliases: ["CET1 capital again"]
-            unit: EUR_M
+            kind: MONETARY
             ecl_basis: FULLY_LOADED
             floor_basis: NA
         """,
@@ -219,7 +219,7 @@ def test_load_template_empty_aliases_raises(tmp_path, monkeypatch):
         fields:
           - code: KM1.1
             row_label_aliases: []
-            unit: EUR_M
+            kind: MONETARY
             ecl_basis: FULLY_LOADED
             floor_basis: NA
         """,
@@ -228,7 +228,7 @@ def test_load_template_empty_aliases_raises(tmp_path, monkeypatch):
         load_template(Template.KM1)
 
 
-def test_load_template_bad_unit_raises(tmp_path, monkeypatch):
+def test_load_template_bad_kind_raises(tmp_path, monkeypatch):
     _write_template(
         tmp_path,
         monkeypatch,
@@ -237,7 +237,7 @@ def test_load_template_bad_unit_raises(tmp_path, monkeypatch):
         fields:
           - code: KM1.1
             row_label_aliases: ["CET1 capital"]
-            unit: BANANAS
+            kind: BANANAS
             ecl_basis: FULLY_LOADED
             floor_basis: NA
         """,

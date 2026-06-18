@@ -54,6 +54,21 @@ class Unit(StrEnum):
     NONE = "NONE"
 
 
+class FieldKind(StrEnum):
+    """Currency-agnostic field category declared in ``templates/*.yaml``.
+
+    Templates carry a *kind*, not a hard-coded currency unit, so one YAML serves
+    every bank; the concrete :class:`Unit` is resolved per bank at mapping time
+    via :func:`unit_for` (a GBP filer's MONETARY field is GBP_M, a USD filer's is
+    USD_M). PERCENT/RATIO/COUNT are currency-independent.
+    """
+
+    MONETARY = "MONETARY"
+    PERCENT = "PERCENT"
+    RATIO = "RATIO"
+    COUNT = "COUNT"
+
+
 class SourceKind(StrEnum):
     PDF = "PDF"
     XBRL_CSV = "XBRL_CSV"
@@ -107,6 +122,43 @@ class FloorBasis(StrEnum):
 class MappingMethod(StrEnum):
     RULE = "RULE"
     LLM = "LLM"
+
+
+# --- kind -> unit resolution -----------------------------------------------------
+
+# ISO 4217 -> the millions-denominated monetary Unit for that currency.
+_CURRENCY_UNIT: dict[str, Unit] = {
+    "EUR": Unit.EUR_M,
+    "GBP": Unit.GBP_M,
+    "USD": Unit.USD_M,
+    "CHF": Unit.CHF_M,
+    "JPY": Unit.JPY_M,
+}
+
+
+def unit_for(kind: FieldKind, currency: str) -> Unit:
+    """Resolve a template's :class:`FieldKind` + a bank currency to a concrete :class:`Unit`.
+
+    MONETARY depends on the bank's reporting currency (GBP -> GBP_M, USD -> USD_M);
+    PERCENT/RATIO/COUNT are currency-independent. Raises ``ValueError`` on a currency
+    with no known monetary unit — an unmapped currency must never silently yield a
+    wrong unit (CLAUDE.md §A — no silent failures).
+    """
+    # ``==`` (not ``is``): FieldKind is a StrEnum, so a plain-string ``kind`` still
+    # resolves to the right branch instead of silently falling through to monetary.
+    if kind == FieldKind.PERCENT:
+        return Unit.PERCENT
+    if kind == FieldKind.RATIO:
+        return Unit.RATIO
+    if kind == FieldKind.COUNT:
+        return Unit.COUNT
+    try:
+        return _CURRENCY_UNIT[currency]
+    except KeyError:
+        raise ValueError(
+            f"no monetary Unit for currency {currency!r} "
+            f"(known: {', '.join(sorted(_CURRENCY_UNIT))})"
+        ) from None
 
 
 # --- value objects ---------------------------------------------------------------

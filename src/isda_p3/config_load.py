@@ -19,10 +19,10 @@ from isda_p3.config import Paths
 from isda_p3.models import (
     Bank,
     EclBasis,
+    FieldKind,
     FloorBasis,
     Jurisdiction,
     Template,
-    Unit,
 )
 
 # --- template specs --------------------------------------------------------------
@@ -34,7 +34,7 @@ class FieldSpec:
 
     code: str
     row_label_aliases: tuple[str, ...]
-    unit: Unit
+    kind: FieldKind
     ecl_basis: EclBasis
     floor_basis: FloorBasis
 
@@ -202,7 +202,7 @@ def load_template(t: Template) -> TemplateSpec:
                 f"field {code!r}: row_label_aliases must be a non-empty list of non-empty strings"
             )
 
-        unit = _parse_enum(Unit, fld.get("unit"), where=f"field {code!r} unit")
+        kind = _parse_enum(FieldKind, fld.get("kind"), where=f"field {code!r} kind")
         ecl = _parse_enum(EclBasis, fld.get("ecl_basis"), where=f"field {code!r} ecl_basis")
         floor = _parse_enum(FloorBasis, fld.get("floor_basis"), where=f"field {code!r} floor_basis")
 
@@ -210,7 +210,7 @@ def load_template(t: Template) -> TemplateSpec:
             FieldSpec(
                 code=code,
                 row_label_aliases=tuple(aliases),
-                unit=unit,
+                kind=kind,
                 ecl_basis=ecl,
                 floor_basis=floor,
             )
