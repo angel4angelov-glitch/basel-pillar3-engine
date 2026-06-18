@@ -135,13 +135,17 @@ def test_confidence_cross_foot_fail_floors_to_zero():
     assert compute_confidence(checks, _WEIGHTS) == Decimal("0")
 
 
-def test_confidence_one_skip():
-    assert compute_confidence([_check(CheckOutcome.SKIP, "A")], _WEIGHTS) == Decimal("0.97")
+def test_confidence_one_skip_only_is_unchecked_baseline():
+    # A skip is NOT validation: a field whose only check SKIPped was never actually
+    # validated, so it gets the unchecked baseline (0.90), identical to having no
+    # check at all — NOT the 0.97 one-skip product (the M1 auto-accept bug).
+    assert compute_confidence([_check(CheckOutcome.SKIP, "A")], _WEIGHTS) == Decimal("0.90")
 
 
-def test_confidence_two_skip_is_product():
+def test_confidence_two_skip_only_is_unchecked_baseline():
+    # Two skips are still no validation → 0.90, NOT 0.97² = 0.9409.
     checks = [_check(CheckOutcome.SKIP, "A"), _check(CheckOutcome.SKIP, "A")]
-    assert compute_confidence(checks, _WEIGHTS) == Decimal("0.9409")  # 0.97 × 0.97
+    assert compute_confidence(checks, _WEIGHTS) == Decimal("0.90")
 
 
 def test_confidence_empty_is_unchecked_baseline():
@@ -149,6 +153,13 @@ def test_confidence_empty_is_unchecked_baseline():
     c = compute_confidence([], _WEIGHTS)
     assert c == Decimal("0.90")
     assert isinstance(c, Decimal)
+
+
+def test_confidence_pass_and_skip_is_skip_penalised_product():
+    # At least one real check fired (PASS) → the SKIP is a mild penalty on an
+    # otherwise-validated field: 1.0 × 0.97 = 0.97 (>= 0.95 → still auto-accepts).
+    checks = [_check(CheckOutcome.PASS, "A"), _check(CheckOutcome.SKIP, "A")]
+    assert compute_confidence(checks, _WEIGHTS) == Decimal("0.97")
 
 
 def test_confidence_missing_weight_raises():
@@ -210,6 +221,46 @@ def test_field_unchecked_routes_to_review():
     assert res.status is ValidationStatus.FLAGGED
 
 
+def test_field_skip_only_routes_to_review():
+    # Every applicable check SKIPped → never validated → unchecked baseline 0.90
+    # < 0.95 → FLAGGED, and validation_basis is empty (no check fired).
+    fv = _fv("KM1.5", "13.6", floor=FloorBasis.FINAL)
+    res = reconcile_field(fv, [_check(CheckOutcome.SKIP, "KM1.5")], _WEIGHTS, CONFIDENCE_AUTO_ACCEPT)
+    assert res.confidence == Decimal("0.90")
+    assert res.validation_basis == ()
+    assert res.status is ValidationStatus.FLAGGED
+
+
+def test_field_pass_plus_skip_auto_passes():
+    # A real PASS fired; the SKIP is a mild penalty → 0.97 >= 0.95 → AUTO_PASSED.
+    fv = _fv("KM1.5", "13.6", floor=FloorBasis.FINAL)
+    checks = [_check(CheckOutcome.PASS, "KM1.5"), _check(CheckOutcome.SKIP, "KM1.5")]
+    res = reconcile_field(fv, checks, _WEIGHTS, CONFIDENCE_AUTO_ACCEPT)
+    assert res.confidence == Decimal("0.97")
+    assert res.validation_basis == (CheckType.RATIO_IDENTITY,)
+    assert res.status is ValidationStatus.AUTO_PASSED
+
+
+@pytest.mark.parametrize(
+    "checks",
+    [
+        [],  # no check at all
+        [_check(CheckOutcome.SKIP, "KM1.5")],  # skip-only
+        [_check(CheckOutcome.SKIP, "KM1.5"), _check(CheckOutcome.SKIP, "KM1.5")],  # all-skip
+    ],
+)
+def test_empty_validation_basis_never_auto_passes(checks):
+    # PROPERTY: an empty validation_basis (no PASS/FAIL fired) ⟺ status can never be
+    # AUTO_PASSED. The fail weight is pushed to 0.99 so confidence alone would clear
+    # the threshold — proving the explicit non-empty-basis guard, not the threshold,
+    # is what blocks the never-validated field.
+    weights = {**_WEIGHTS, "ratio_identity_fail": Decimal("0.99")}
+    fv = _fv("KM1.5", "13.6", floor=FloorBasis.FINAL)
+    res = reconcile_field(fv, checks, weights, CONFIDENCE_AUTO_ACCEPT)
+    assert res.validation_basis == ()
+    assert res.status is not ValidationStatus.AUTO_PASSED
+
+
 def test_validation_basis_lists_only_fired_checks_deduped():
     # Two RATIO_IDENTITY (one PASS, one FAIL) + a SKIP CROSS_FOOT, all on KM1.4.
     fv = _fv("KM1.4", "368000", floor=FloorBasis.FINAL, unit=Unit.GBP_M)
@@ -255,6 +306,24 @@ def test_reconcile_template_broken_ratio_flags_only_sharing_fields():
     assert status["KM1.3"] is ValidationStatus.AUTO_PASSED
     assert status["KM1.6"] is ValidationStatus.AUTO_PASSED
     assert status["KM1.7"] is ValidationStatus.AUTO_PASSED
+
+
+def test_reconcile_template_missing_rwa_flags_all_ratio_fields():
+    # THE M1 REGRESSION (chunk 1.9): KM1.4 (RWA) never extracted → all three ratio
+    # identities reference a missing denominator → SKIP. A skip is not validation, so
+    # every field touched only by those skipped identities (KM1.5/.6/.7 ratios AND
+    # their KM1.1/.2/.3 numerators) FLAGS — it must NOT auto-accept on a 0.97 skip
+    # product (§A.2 / audit C3). KM1.4 stays absent: nothing fabricated.
+    values = _clean_km1()
+    del values["KM1.4"]
+    results = reconcile_template(values, Template.KM1, tolerances=_TOLS, weights=_WEIGHTS)
+    by = {r.field_value.field_code: r for r in results}
+
+    assert "KM1.4" not in by  # never fabricated as 0
+    for code in ("KM1.1", "KM1.2", "KM1.3", "KM1.5", "KM1.6", "KM1.7"):
+        assert by[code].status is ValidationStatus.FLAGGED, code
+        assert by[code].confidence == Decimal("0.90"), code  # unchecked baseline, not 0.97
+        assert by[code].validation_basis == (), code  # no check actually fired
 
 
 def test_reconcile_template_missing_tolerance_key_raises_with_context():

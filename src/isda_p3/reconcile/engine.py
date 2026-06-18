@@ -43,9 +43,13 @@ def reconcile_field(
 ) -> ReconciliationResult:
     """Score one field against the checks that touch it and decide its status.
 
-    ``AUTO_PASSED`` iff ``confidence >= threshold`` AND no applicable check FAILed;
-    else ``FLAGGED``. ``validation_basis`` lists the distinct (non-SKIP) check types
-    that actually fired, preserving order.
+    ``AUTO_PASSED`` iff ``confidence >= threshold`` AND no applicable check FAILed AND
+    ``validation_basis`` is non-empty (i.e. at least one check actually fired); else
+    ``FLAGGED``. ``validation_basis`` lists the distinct (non-SKIP) check types that
+    fired, preserving order — so "non-empty validation_basis" == "≥1 fired check". The
+    guard is made explicit so routing can never drift from confidence alone: a field
+    whose checks all SKIPped (never validated) cannot auto-accept even if a future
+    weight pushed the unchecked baseline ≥ threshold (chunk 1.9, §A.2).
     """
     my_checks = applicable_checks(fv.field_code, checks)
     confidence = compute_confidence(my_checks, weights)
@@ -55,7 +59,7 @@ def reconcile_field(
     has_fail = any(c.outcome is CheckOutcome.FAIL for c in my_checks)
     status = (
         ValidationStatus.AUTO_PASSED
-        if confidence >= threshold and not has_fail
+        if confidence >= threshold and not has_fail and validation_basis
         else ValidationStatus.FLAGGED
     )
     return ReconciliationResult(

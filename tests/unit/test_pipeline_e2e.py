@@ -251,8 +251,8 @@ def test_missing_rwa_skips_identities_and_fabricates_nothing():
     for code in ("KM1.5", "KM1.6", "KM1.7"):
         ratio_checks = [c for c in by[code].checks if c.check_type is CheckType.RATIO_IDENTITY]
         assert ratio_checks and all(c.outcome is CheckOutcome.SKIP for c in ratio_checks)
-        # NOTE (design): a SKIP-only field scores the 0.97 skip baseline (>= the 0.95
-        # auto-accept threshold), so it AUTO_PASSES — the same SKIP-by-design rule that
-        # lets period_sanity skip on a single period without flagging everything. The
-        # committed reconcile engine (chunk 1.6) owns this; the pipeline does not override it.
-        assert by[code].status is ValidationStatus.AUTO_PASSED
+        # A SKIP is NOT validation (chunk 1.9): a field whose only checks SKIPped was
+        # never actually validated, so it FLAGS for human review — never auto-accepts
+        # on a 0.97 skip product (§A.2 / audit C3). validation_basis is empty.
+        assert by[code].status is ValidationStatus.FLAGGED
+        assert by[code].validation_basis == ()
