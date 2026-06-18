@@ -198,3 +198,37 @@ def load_tolerances(
             for k, v in params.items()
         }
     return out
+
+
+# Keys :func:`isda_p3.reconcile.confidence.compute_confidence` may look up — every
+# outcome path must have a weight, so absence is a hard config error caught at load.
+_REQUIRED_WEIGHTS = frozenset(
+    {"pass", "skip", "unchecked", "ratio_identity_fail", "cross_foot_fail"}
+)
+
+
+def load_weights(
+    path: Path = Paths.CONFIG / "reconciliation.yaml",
+) -> dict[str, Decimal]:
+    """Load the confidence-weight map as ``Decimal`` from ``reconciliation.yaml``.
+
+    Returns ``{weight_name: Decimal}`` — e.g. ``{"pass": Decimal("1.0"), "skip":
+    Decimal("0.97"), "unchecked": Decimal("0.90"), "ratio_identity_fail":
+    Decimal("0.0"), ...}`` — consumed by
+    :func:`isda_p3.reconcile.confidence.compute_confidence`. Raises ``ValueError``
+    if any weight :func:`compute_confidence` needs is absent, so a missing weight
+    fails at load (§A.4), not mid-pipeline on the first field that needs it.
+    """
+    raw = _load_yaml_mapping(path)
+    confidence = raw.get("confidence")
+    if not isinstance(confidence, dict):
+        raise ValueError(f"{path}: 'confidence' must be a mapping")
+    weights = {
+        k: _parse_decimal(v, where=f"{path} confidence.{k}") for k, v in confidence.items()
+    }
+    missing = _REQUIRED_WEIGHTS - weights.keys()
+    if missing:
+        raise ValueError(
+            f"{path}: confidence section missing required weight(s): {', '.join(sorted(missing))}"
+        )
+    return weights
