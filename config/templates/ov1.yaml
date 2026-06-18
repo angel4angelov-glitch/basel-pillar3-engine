@@ -1,14 +1,22 @@
-# ov1.yaml — OV1 "Overview of RWA" canonical field SKELETON (chunk 0.4, loader proof).
+# ov1.yaml — OV1 "Overview of RWA" canonical field set (chunk 2.3).
 #
-# Same shape as km1.yaml. RWA rows are post-output-floor (floor_basis: FINAL) and
-# have no ECL phase-in axis (ecl_basis: NA). `kind: MONETARY` is currency-agnostic;
-# the per-bank Unit is resolved at mapping time. FULL OV1 field set lands in chunk 2.3.
+# OV1 columns are a=RWA (current), b=RWA (prior), c=minimum capital. We map column
+# a only this chunk (the mapper's "first numeric cell right of the label" rule
+# already selects col a; b/c are out of scope). Rows are risk types: this file lists
+# the TOP-LEVEL RWA rows + the total ONLY — never the "of which" sub-rows, which
+# would double-count in the cross-foot (config/identities.yaml sums these into
+# OV1.29). Exact normalised-label matching (no substrings) means an "of which:
+# standardised approach" sub-row can never match a top-level alias here.
+#
+# Every row is MONETARY (the concrete Unit is resolved per bank at mapping time via
+# models.unit_for), ecl_basis NA (no IFRS 9 phase-in on RWA totals), floor_basis
+# FINAL (post-output-floor RWA — the headline figure; pre-floor rows land later).
 template: OV1
 fields:
   - code: OV1.1
     row_label_aliases:
       - "Credit risk (excluding counterparty credit risk)"
-      - "Credit risk"
+      - "Credit risk (excluding CCR)"
     kind: MONETARY
     ecl_basis: NA
     floor_basis: FINAL
@@ -19,10 +27,38 @@ fields:
     kind: MONETARY
     ecl_basis: NA
     floor_basis: FINAL
+  - code: OV1.15
+    row_label_aliases:
+      - "Settlement/delivery risk"
+      - "Settlement risk"
+    kind: MONETARY
+    ecl_basis: NA
+    floor_basis: FINAL
+  - code: OV1.16
+    row_label_aliases:
+      - "Securitisation exposures in the non-trading book"
+      - "Securitisation positions in the banking book"
+    kind: MONETARY
+    ecl_basis: NA
+    floor_basis: FINAL
+  - code: OV1.20
+    row_label_aliases:
+      - "Position, foreign exchange and commodities risks (Market risk)"
+      - "Market risk"
+    kind: MONETARY
+    ecl_basis: NA
+    floor_basis: FINAL
+  - code: OV1.23
+    row_label_aliases:
+      - "Operational risk"
+    kind: MONETARY
+    ecl_basis: NA
+    floor_basis: FINAL
   - code: OV1.29
     row_label_aliases:
-      - "Total"
       - "Total risk-weighted exposure amount"
+      - "Total risk-weighted exposure amount (TREA)"
+      - "Total"
     kind: MONETARY
     ecl_basis: NA
     floor_basis: FINAL

@@ -101,17 +101,27 @@ def cross_foot(
 ) -> CheckResult:
     """Check that the components sum to the total within ``max(abs_tol, rel_tol×|total|)``.
 
+    Basis-pinned like :func:`ratio_identity` (C1): every operand declares its
+    expected ``(ecl, floor)`` basis, and any *present* operand whose actual basis
+    differs raises :class:`CrossBasisError` — the engine refuses to fold, e.g., a
+    pre-floor RWA row into a final total (a config/data error, not a check FAIL).
+
     SKIP if the total or any component is absent (a missing addend is missing
-    input, not a failed foot); else PASS/FAIL on the tolerant comparison.
-
-    Unlike :func:`ratio_identity`, a cross-foot is basis-agnostic by design: a
-    :class:`CrossFoot` carries bare codes and assumes its components share the
-    total's basis (true for KM1/OV1 sums). Mixed-basis foots are an OV1 concern
-    introduced in chunk 2.3, not enforced here.
+    input, not a failed foot); else PASS/FAIL on the tolerant comparison. The OV1
+    cross-foot sums the TOP-LEVEL risk-type rows only — the "of which" sub-rows are
+    never operands, so they cannot double-count (TOOLING.md §2; chunk 2.3).
     """
-    codes = (cf.total, *cf.components)
+    operands = (cf.total, *cf.components)
+    codes = tuple(op.code for op in operands)
 
-    missing = [c for c in codes if c not in values]
+    # C1: refuse to evaluate across bases for any operand actually present (raises
+    # before any arithmetic), mirroring ratio_identity's basis pin.
+    for op in operands:
+        fv = values.get(op.code)
+        if fv is not None:
+            _assert_basis(fv, op)
+
+    missing = [op.code for op in operands if op.code not in values]
     if missing:
         return CheckResult(
             check_type=CheckType.CROSS_FOOT,
@@ -123,8 +133,8 @@ def cross_foot(
             detail=f"SKIP: missing {', '.join(missing)}",
         )
 
-    total = values[cf.total].value
-    components_sum = sum((values[c].value for c in cf.components), Decimal("0"))
+    total = values[cf.total.code].value
+    components_sum = sum((values[c.code].value for c in cf.components), Decimal("0"))
     tol = max(abs_tol, rel_tol * abs(total))
     outcome = CheckOutcome.PASS if abs(components_sum - total) <= tol else CheckOutcome.FAIL
     return CheckResult(
@@ -134,7 +144,7 @@ def cross_foot(
         expected=components_sum,
         actual=total,
         tolerance=tol,
-        detail=f"{cf.total} stated {total} vs components sum {components_sum} (±{tol})",
+        detail=f"{cf.total.code} stated {total} vs components sum {components_sum} (±{tol})",
     )
 
 

@@ -24,4 +24,22 @@ KM1:
       numerator:   {code: KM1.3, ecl: TRANSITIONAL, floor: NA}
       denominator: {code: KM1.4, ecl: NA,           floor: FINAL}
       factor: 100
-  cross_foots: []          # KM1 has none; OV1 gets risk-row → total-RWA foots in chunk 2.3
+  cross_foots: []          # KM1 has none; OV1 gets risk-row → total-RWA foots below
+
+# OV1 "Overview of RWA": the total risk exposure amount (OV1.29) cross-foots the
+# TOP-LEVEL risk-type RWA rows (credit, CCR, settlement, securitisation, market,
+# operational) — NOT the "of which" sub-rows, which would double-count. Every
+# operand is pinned to (ecl: NA, floor: FINAL): the cross-foot, like a ratio
+# identity, refuses to mix bases (a pre-floor row summed into a final total is a
+# CrossBasisError, not a tolerance miss — CLAUDE.md §A C1).
+OV1:
+  ratio_identities: []     # OV1 has none (cols b/c, ratios out of scope this chunk)
+  cross_foots:
+    - total: {code: OV1.29, ecl: NA, floor: FINAL}
+      components:
+        - {code: OV1.1,  ecl: NA, floor: FINAL}
+        - {code: OV1.6,  ecl: NA, floor: FINAL}
+        - {code: OV1.15, ecl: NA, floor: FINAL}
+        - {code: OV1.16, ecl: NA, floor: FINAL}
+        - {code: OV1.20, ecl: NA, floor: FINAL}
+        - {code: OV1.23, ecl: NA, floor: FINAL}

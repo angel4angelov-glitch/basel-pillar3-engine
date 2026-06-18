@@ -49,10 +49,16 @@ class RatioIdentity:
 
 @dataclass(frozen=True)
 class CrossFoot:
-    """``total.value == sum(components[i].value)`` (± tolerance)."""
+    """``total.value == sum(components[i].value)`` (± tolerance).
 
-    total: str
-    components: tuple[str, ...]
+    Every operand carries its expected ``(ecl, floor)`` basis, exactly like a
+    :class:`RatioIdentity`: the checks engine refuses to sum components into a total
+    across bases (a pre-floor row folded into a final total is a config/data error,
+    not a tolerance miss — CLAUDE.md §A C1).
+    """
+
+    total: Operand
+    components: tuple[Operand, ...]
 
 
 @dataclass(frozen=True)
@@ -157,19 +163,15 @@ def load_identities(
         where = f"{base}.cross_foots[{i}]"
         if not isinstance(item, dict):
             raise ValueError(f"{where}: expected a mapping, got {type(item).__name__}")
-        total = item.get("total")
-        if not isinstance(total, str) or not total.strip():
-            raise ValueError(f"{where}: missing or empty 'total'")
-        components = item.get("components")
-        if (
-            not isinstance(components, list)
-            or not components
-            or not all(isinstance(c, str) and c.strip() for c in components)
-        ):
-            raise ValueError(
-                f"{where}: 'components' must be a non-empty list of non-empty strings"
-            )
-        cross_foots.append(CrossFoot(total=total, components=tuple(components)))
+        total = _parse_operand(item.get("total"), where=f"{where}.total")
+        components_raw = item.get("components")
+        if not isinstance(components_raw, list) or not components_raw:
+            raise ValueError(f"{where}: 'components' must be a non-empty list")
+        components = tuple(
+            _parse_operand(c, where=f"{where}.components[{j}]")
+            for j, c in enumerate(components_raw)
+        )
+        cross_foots.append(CrossFoot(total=total, components=components))
 
     return TemplateIdentities(
         ratio_identities=tuple(ratio_identities), cross_foots=tuple(cross_foots)

@@ -196,7 +196,14 @@ def test_absent_denominator_skips():
 
 # --- cross_foot: PASS / FAIL / SKIP --------------------------------------------
 
-_CF = CrossFoot(total="T", components=("A", "B", "C"))
+# Basis-pinned (C1): every operand declares its expected (ecl, floor); the bare
+# A/B/C/T fixtures default to NA/NA via ``_fv``, so the foot evaluates without
+# raising. A dedicated test below feeds a mismatched basis to force CrossBasisError.
+def _op(code: str, *, ecl: EclBasis = EclBasis.NA, floor: FloorBasis = FloorBasis.NA) -> Operand:
+    return Operand(code, ecl, floor)
+
+
+_CF = CrossFoot(total=_op("T"), components=(_op("A"), _op("B"), _op("C")))
 _ABS = Decimal("1.0")
 _REL = Decimal("0.001")
 
@@ -253,6 +260,54 @@ def test_cross_foot_skip_missing_component():
     r = cross_foot(values, _CF, _ABS, _REL)
     assert r.outcome is CheckOutcome.SKIP
     assert "C" in r.detail
+
+
+# --- cross_foot: basis pinning (C1, chunk 2.3) ---------------------------------
+
+
+def test_cross_foot_basis_mismatch_raises_cross_basis_error():
+    # The total is pinned FINAL but supplied PRE_FLOOR → refuse to fold across bases.
+    cf = CrossFoot(
+        total=_op("T", floor=FloorBasis.FINAL),
+        components=(_op("A", floor=FloorBasis.FINAL), _op("B", floor=FloorBasis.FINAL)),
+    )
+    values = {
+        "T": _fv("T", "300", floor=FloorBasis.PRE_FLOOR, unit=Unit.GBP_M),  # wrong basis
+        "A": _fv("A", "100", floor=FloorBasis.FINAL, unit=Unit.GBP_M),
+        "B": _fv("B", "200", floor=FloorBasis.FINAL, unit=Unit.GBP_M),
+    }
+    with pytest.raises(CrossBasisError, match="T"):
+        cross_foot(values, cf, _ABS, _REL)
+
+
+def test_cross_foot_basis_mismatch_on_component_raises():
+    cf = CrossFoot(
+        total=_op("T", floor=FloorBasis.FINAL),
+        components=(_op("A", floor=FloorBasis.FINAL), _op("B", floor=FloorBasis.FINAL)),
+    )
+    values = {
+        "T": _fv("T", "300", floor=FloorBasis.FINAL, unit=Unit.GBP_M),
+        "A": _fv("A", "100", floor=FloorBasis.PRE_FLOOR, unit=Unit.GBP_M),  # wrong basis
+        "B": _fv("B", "200", floor=FloorBasis.FINAL, unit=Unit.GBP_M),
+    }
+    with pytest.raises(CrossBasisError, match="A"):
+        cross_foot(values, cf, _ABS, _REL)
+
+
+def test_cross_foot_absent_operand_with_wrong_basis_still_skips():
+    # Basis is only asserted on PRESENT operands: an absent component cannot raise,
+    # so a foot missing an addend SKIPs even though that addend would mismatch.
+    cf = CrossFoot(
+        total=_op("T", floor=FloorBasis.FINAL),
+        components=(_op("A", floor=FloorBasis.FINAL), _op("B", floor=FloorBasis.FINAL)),
+    )
+    values = {  # B absent; the present T/A match their declared FINAL basis
+        "T": _fv("T", "300", floor=FloorBasis.FINAL, unit=Unit.GBP_M),
+        "A": _fv("A", "100", floor=FloorBasis.FINAL, unit=Unit.GBP_M),
+    }
+    r = cross_foot(values, cf, _ABS, _REL)
+    assert r.outcome is CheckOutcome.SKIP
+    assert "B" in r.detail
 
 
 # --- two_engine_agreement: post-mapping FieldValue-level cross-check (chunk 2.2) -
@@ -425,8 +480,31 @@ def test_load_identities_loaded_identity_runs_pass():
 
 
 def test_load_identities_missing_section_raises():
-    with pytest.raises(ValueError, match="OV1"):
-        load_identities(Template.OV1)
+    # CR6 has no identities section (OV1 gained one in chunk 2.3) → fail loud.
+    with pytest.raises(ValueError, match="CR6"):
+        load_identities(Template.CR6)
+
+
+def test_load_identities_ov1_cross_foot():
+    # OV1's TOP-LEVEL risk rows cross-foot into the total, every operand pinned
+    # (ecl: NA, floor: FINAL) — no ratio identities this chunk.
+    ident = load_identities(Template.OV1)
+    assert ident.ratio_identities == ()
+    assert len(ident.cross_foots) == 1
+    cf = ident.cross_foots[0]
+    assert cf.total.code == "OV1.29"
+    assert cf.total.floor is FloorBasis.FINAL
+    assert tuple(c.code for c in cf.components) == (
+        "OV1.1",
+        "OV1.6",
+        "OV1.15",
+        "OV1.16",
+        "OV1.20",
+        "OV1.23",
+    )
+    for op in cf.components:
+        assert op.ecl is EclBasis.NA
+        assert op.floor is FloorBasis.FINAL
 
 
 def test_load_tolerances():
@@ -486,14 +564,31 @@ def test_load_identities_non_list_section_raises(tmp_path):
 
 
 def test_load_identities_bad_cross_foot_raises(tmp_path):
+    # An empty components list is a malformed foot (nothing to sum) → fail loud.
     bad = tmp_path / "identities.yaml"
     bad.write_text(
         "KM1:\n"
         "  ratio_identities: []\n"
         "  cross_foots:\n"
-        "    - total: T\n"
+        "    - total: {code: T, ecl: NA, floor: FINAL}\n"
         "      components: []\n",
         encoding="utf-8",
     )
     with pytest.raises(ValueError, match="components"):
+        load_identities(Template.KM1, path=bad)
+
+
+def test_load_identities_cross_foot_bad_operand_basis_raises(tmp_path):
+    # A cross-foot operand carries a basis now (C1): a bogus floor fails at load.
+    bad = tmp_path / "identities.yaml"
+    bad.write_text(
+        "KM1:\n"
+        "  ratio_identities: []\n"
+        "  cross_foots:\n"
+        "    - total: {code: T, ecl: NA, floor: FINAL}\n"
+        "      components:\n"
+        "        - {code: A, ecl: NA, floor: BOGUS}\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="BOGUS"):
         load_identities(Template.KM1, path=bad)
