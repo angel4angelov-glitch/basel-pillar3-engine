@@ -1,0 +1,46 @@
+# p3dh_km1_map.yaml — EBA Pillar 3 Data Hub (P3DH) KM1 datapoint → canonical field map (chunk 3.2).
+#
+# The P3DH serves quantitative disclosures as XBRL-CSV. This map DRIVES
+# discovery/p3dh.py: each CSV row whose `datapoint` matches an entry below becomes a
+# canonical KM1 FieldValue that flows through the SAME reconciliation gate as the PDF
+# path (only provenance differs: engine=P3DH, source_kind=XBRL_CSV, bbox=None).
+# Refining the datapoint ids later is a CONFIG edit, never a code change (CLAUDE.md §A.5).
+#
+# stored_as — how the XBRL cell represents the figure, so the parser can emit the
+# canonical KM1 representation deterministically:
+#   AMOUNT  : a monetary amount, assumed already in the template's canonical millions
+#             unit → passes through unchanged.            (see TODO-verify below)
+#   FRACTION: a ratio stored as a fraction, e.g. 0.136 → ×100 → canonical PERCENT 13.6.
+#   PERCENT : a ratio already stored as a percent, e.g. 13.6 → passes through.
+#
+# TODO verify against EBA DPM taxonomy: the `datapoint` ids (eba_dpm:km1.r00x0, modelled
+# on the EBA ITS 2024/3172 KM1 row codes 0010–0070), the `eba_dpm:` prefix, AND the
+# AMOUNT millions-scale assumption are ILLUSTRATIVE placeholders — NOT confirmed against
+# the published EBA DPM datapoint signatures. Same honesty rule we applied to LEIs in
+# banks.yaml: plausible, marked, refinable in config.
+# TODO verify specifically: KM1.7 is set PERCENT (17.7 passthrough) to exercise that path,
+# but the EBA DPM likely stores all three capital ratios identically — if KM1.5/KM1.6 are
+# FRACTION then KM1.7 is almost certainly FRACTION (0.177) too. Confirm before real data.
+template: KM1
+datapoints:
+  - datapoint: "eba_dpm:km1.r0010"   # Common Equity Tier 1 (CET1) capital
+    field_code: KM1.1
+    stored_as: AMOUNT
+  - datapoint: "eba_dpm:km1.r0020"   # Tier 1 capital
+    field_code: KM1.2
+    stored_as: AMOUNT
+  - datapoint: "eba_dpm:km1.r0030"   # Total capital
+    field_code: KM1.3
+    stored_as: AMOUNT
+  - datapoint: "eba_dpm:km1.r0040"   # Total risk exposure amount (RWA)
+    field_code: KM1.4
+    stored_as: AMOUNT
+  - datapoint: "eba_dpm:km1.r0050"   # CET1 ratio
+    field_code: KM1.5
+    stored_as: FRACTION
+  - datapoint: "eba_dpm:km1.r0060"   # Tier 1 ratio
+    field_code: KM1.6
+    stored_as: FRACTION
+  - datapoint: "eba_dpm:km1.r0070"   # Total capital ratio
+    field_code: KM1.7
+    stored_as: PERCENT
