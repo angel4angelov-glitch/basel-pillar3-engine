@@ -28,3 +28,4 @@ data/extracted/*
 data/dataset/*
 data/review_queue/*
 !data/**/.gitkeep
+demo_report.html
