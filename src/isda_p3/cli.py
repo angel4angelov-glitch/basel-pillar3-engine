@@ -23,6 +23,7 @@ from collections.abc import Mapping
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
+from typing import Literal
 
 from .config import setup_logging
 from .config_load import load_banks
@@ -32,6 +33,7 @@ from .mapping.llm import StructuredMapper
 from .models import Bank, ReconciliationResult, ReportingPeriod, SourceKind, Template, Unit
 from .pipeline import extract_template
 from .reconcile.identities import load_tolerances, load_weights
+from .review.queue import enqueue_flagged, load_queue, render_item, resolve
 from .store.dataset import append_rows
 
 
@@ -152,13 +154,50 @@ def run_command(
         print(format_result(result))
 
     if store:
+        run_id = uuid.uuid4().hex
         append_rows(
             results,
             bank=bank,
-            run_id=uuid.uuid4().hex,
+            run_id=run_id,
             extracted_at=datetime.now(timezone.utc).isoformat(),
         )
+        # Same run_id: flagged rows land in this run's review queue (box 6).
+        enqueue_flagged(results, bank=bank, run_id=run_id)
     return results
+
+
+# --- review command --------------------------------------------------------------
+
+
+def review_list_command() -> None:
+    """Print the value-beside-source-cell view for every queued item (newest first)."""
+    items = load_queue()
+    if not items:
+        print("review queue is empty")
+        return
+    for item in items:
+        print(render_item(item))
+        print()
+
+
+def review_resolve_command(
+    *,
+    run_id: str,
+    field_code: str,
+    confirm: bool,
+    corrected_value: Decimal | None,
+    note: str,
+) -> None:
+    """Confirm or correct one queued item and print the resulting status."""
+    action: Literal["confirm", "correct"] = "confirm" if confirm else "correct"
+    try:
+        item = resolve(
+            run_id, field_code, action=action, corrected_value=corrected_value, note=note
+        )
+    except (FileNotFoundError, KeyError) as exc:
+        raise SystemExit(str(exc)) from None
+    suffix = f" = {item.value} {item.unit.value}" if action == "correct" else ""
+    print(f"{field_code}: {item.status.value}{suffix}")
 
 
 # --- argument parsing ------------------------------------------------------------
@@ -179,11 +218,30 @@ def _build_parser() -> argparse.ArgumentParser:
     run_p.add_argument(
         "--no-store", action="store_true", help="print results without writing the parquet store"
     )
+
+    review_p = sub.add_parser("review", help="triage the low-confidence review queue (box 6)")
+    review_sub = review_p.add_subparsers(dest="review_command", required=True)
+    review_sub.add_parser("list", help="print every queued flagged item, newest run first")
+
+    resolve_p = review_sub.add_parser("resolve", help="confirm or correct one queued item")
+    resolve_p.add_argument(
+        "--run", required=True, dest="run_id", help="run id (the jsonl filename)"
+    )
+    resolve_p.add_argument(
+        "--field", required=True, dest="field_code", help="field code, e.g. KM1.5"
+    )
+    action = resolve_p.add_mutually_exclusive_group(required=True)
+    action.add_argument("--confirm", action="store_true", help="accept the extracted value as-is")
+    action.add_argument(
+        "--correct", type=Decimal, dest="corrected_value", metavar="VALUE",
+        help="replace the value with this human-verified figure",
+    )
+    resolve_p.add_argument("--note", default="", help="free-text adjudication note (audit)")
     return parser
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Entry point: parse args and dispatch the ``run`` subcommand."""
+    """Entry point: parse args and dispatch the ``run`` or ``review`` subcommand."""
     setup_logging()
     args = _build_parser().parse_args(argv)
 
@@ -196,6 +254,17 @@ def main(argv: list[str] | None = None) -> None:
             engine=DoclingEngine(),
             store=not args.no_store,
         )
+    elif args.command == "review":
+        if args.review_command == "list":
+            review_list_command()
+        elif args.review_command == "resolve":
+            review_resolve_command(
+                run_id=args.run_id,
+                field_code=args.field_code,
+                confirm=args.confirm,
+                corrected_value=args.corrected_value,
+                note=args.note,
+            )
 
 
 if __name__ == "__main__":
