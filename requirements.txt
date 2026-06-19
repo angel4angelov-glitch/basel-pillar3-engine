@@ -6,6 +6,7 @@ anthropic
 langchain-anthropic
 pandas
 pyarrow
+openpyxl
 scipy
 pyyaml
 python-dotenv
