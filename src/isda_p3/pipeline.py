@@ -24,11 +24,12 @@ from collections.abc import Mapping
 from decimal import Decimal
 from pathlib import Path
 
-from .config_load import load_template
+from .config_load import TemplateSpec, load_template
 from .extraction.engine import ExtractionEngine
 from .mapping.classify import select_template_table
 from .mapping.llm import StructuredMapper, map_unmatched
 from .mapping.map_fields import map_fields
+from .mapping.merge import merge_engine_values
 from .models import (
     Bank,
     FieldValue,
@@ -52,6 +53,38 @@ class NoTemplateTableError(RuntimeError):
     """
 
 
+def _map_engine(
+    pdf_path: Path,
+    engine: ExtractionEngine,
+    spec: TemplateSpec,
+    *,
+    bank: Bank,
+    period: ReportingPeriod,
+    source_url: str,
+    source_kind: SourceKind,
+    mapper: StructuredMapper | None,
+) -> list[FieldValue] | None:
+    """Extract + select + map one engine's view of ``template`` -> ``list[FieldValue]``.
+
+    Returns ``None`` if no extracted table matches the template (so callers can decide
+    whether that is fatal — a missing PRIMARY table is, a missing SECONDARY one is only
+    a coverage gap). Rule-first mapping; the bounded LLM fallback runs only on unmatched
+    labels and only when a ``mapper`` is injected.
+    """
+    groups = engine.extract_tables(pdf_path)
+    cells = select_template_table(groups, spec)
+    if cells is None:
+        return None
+    mapped, unmatched = map_fields(
+        cells, spec, bank, period, source_url, source_kind, engine.engine
+    )
+    if mapper is not None and unmatched:
+        mapped += map_unmatched(
+            unmatched, cells, spec, bank, period, source_url, source_kind, engine.engine, mapper
+        )
+    return mapped
+
+
 def extract_template(
     pdf_path: Path,
     *,
@@ -64,6 +97,7 @@ def extract_template(
     tolerances: Mapping[str, Mapping[str, Decimal]],
     weights: Mapping[str, Decimal],
     mapper: StructuredMapper | None = None,
+    secondary_engine: ExtractionEngine | None = None,
 ) -> list[ReconciliationResult]:
     """Run boxes 3->4->5 for one template and return the reconciled results.
 
@@ -72,6 +106,14 @@ def extract_template(
     fallback) is bounded to *row choice* and skipped entirely when ``mapper`` is
     ``None`` (the M1 default). Raises :class:`NoTemplateTableError` if no extracted
     table looks like ``template``.
+
+    If ``secondary_engine`` is given (the chunk-2.2 wiring, now live), it is run and
+    mapped independently, its numbers folded into the primary FieldValues by
+    :func:`merge_engine_values` (post-mapping, by ``field_code`` — never by raw cell),
+    so ``reconcile_template``'s two-engine agreement check fires live. The primary
+    (Docling) stays canonical throughout; a secondary that finds no template table is a
+    logged coverage gap (two-engine SKIPs), not a failure. With ``secondary_engine``
+    ``None`` the behaviour is unchanged from M1 (two-engine SKIPs; identities still gate).
     """
     spec = load_template(template)
 
@@ -90,6 +132,28 @@ def extract_template(
         mapped += map_unmatched(
             unmatched, cells, spec, bank, period, source_url, source_kind, engine.engine, mapper
         )
+
+    if secondary_engine is not None:
+        secondary = _map_engine(
+            pdf_path,
+            secondary_engine,
+            spec,
+            bank=bank,
+            period=period,
+            source_url=source_url,
+            source_kind=source_kind,
+            mapper=mapper,
+        )
+        if secondary is None:
+            log.warning(
+                "extract_template(%s): secondary engine %s found no template table in %s "
+                "— two-engine cross-check will SKIP",
+                template.value,
+                secondary_engine.engine.value,
+                pdf_path,
+            )
+            secondary = []
+        mapped = merge_engine_values(mapped, secondary)
 
     # Build the code->value map, refusing to silently drop a collision: two values
     # for one field code (possible if the LLM fallback grounds the same code twice)
