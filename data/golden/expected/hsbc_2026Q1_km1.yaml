@@ -1,0 +1,157 @@
+# HSBC Holdings plc — KM1 "Key metrics" golden ground truth (chunk H2).
+#
+# INDEPENDENT GROUND TRUTH. Every value below was transcribed BY HUMAN VISION from
+# the rendered PDF page (Read tool on a 200-dpi render of page 5 — NOT
+# pdfplumber/Camelot/Docling text). The deterministic extraction stack is then
+# MEASURED against this file; it never authored it (CLAUDE.md §A.1/§A.3). Current-
+# period column only (At 31 Mar 2026 — the bold first numeric column), which the
+# rule-mapper reads as the first numeric cell per row.
+#
+# SCALE (the H2 fix, UNDER TEST): HSBC discloses KM1 monetary rows in USD BILLIONS
+# (section headers literally read "Available capital ($bn)", "Risk-weighted assets
+# ($bn)", "...($bn)"). The cells are bare ("124.0"). The canonical Unit is millions,
+# so each printed $bn amount is recorded here as its millions value (printed × 1000),
+# computed BY HUMAN — e.g. CET1 printed "124.0" $bn ⇒ value "124000" $m. If the
+# extractor's monetary_scale fix is wrong it reads 124 (≠ golden 124000) ⇒ MISMATCH,
+# so the scale fix is measured against this golden, not assumed.
+#
+# Provenance (one PDF, one period):
+source:
+  bank: HSBC Holdings plc (consolidated group)
+  as_at: 2026-03-31
+  source_url: https://www.hsbc.com/-/files/hsbc/investors/hsbc-results/2026/1q/pdfs/hsbc-holdings-plc/260508-hsbc-holdings-plc-pillar-3-disclosures-at-31-march-2026-english.pdf
+  retrieved: 2026-06-20
+  sha256: 23e81299767a6d2b88468e47bea2c3e57718fcf173bc8a619b9f73b39feba8a2
+  currency: USD
+  unit: billion (US$bn) — printed scale; values below normalised to US$m (× 1000)
+  pages: {km1: 5}                      # KM1 is a single-page table in this report
+  verified_by: human-vision
+  verified_date: 2026-06-20
+  # Capital BASIS — read from HSBC's OWN words, NOT assumed from Barclays:
+  #  - The table intro states capital is on the "UK Capital Requirements Regulation
+  #    end-point basis" (i.e. fully-loaded / no IFRS 9 transitional relief). By 2026
+  #    transitional relief has fully run off, so end-point == transitional IN VALUE;
+  #    rows 1/2/3 are tagged ecl_basis TRANSITIONAL to match the EBA template row +
+  #    config/templates/km1.yaml (the identities pin to that basis). The digit is the
+  #    same either way — the tag is the template's axis, the basis read is HSBC's own.
+  #  - Footnote 1: "From 30 June 2025, the regulatory valuation of tier 2 capital
+  #    includes the associated accrued interest. Prior periods have not been restated."
+  #    Affects Total capital (rows 3/7) period-on-period comparability, not the Q1'26
+  #    point-in-time digit measured here.
+  #  - RWA (4) + capital ratios (5/6/7) carry floor_basis FINAL to match the template
+  #    row; UK Basel 3.1 output floor is not yet effective (PRA: 1 Jan 2027), so this
+  #    is the standard total RWA — the tag is the EBA row axis, consistent with Barclays.
+  # BASIS TRAP (documented, not a bug): the intro states LCR (row 17) is the average of
+  # the preceding 12 months and NSFR (row 20) is the average of the preceding four
+  # quarter-end values. So their components (rows 15/16, 18/19) are NOT a clean
+  # point-in-time numerator/denominator for the disclosed ratio — they must NOT be
+  # reconciled into the LCR/NSFR ratio (config/templates/km1.yaml gives them no identity).
+  # KM1.7 NOTE (measured miss, deferred-with-reason): HSBC prints rows 3 (amount) and 7
+  # (ratio) with the IDENTICAL label "Total capital¹" — the "(%)" sits in a separate
+  # "Capital ratios (%)" section-header row, and the row enumerator (3 vs 7) is a
+  # separate numeric cell. Exact-label rule + bounded-LLM both key off the row label,
+  # which collides; the topmost row (3, the amount) wins and row 7 is dropped before the
+  # LLM sees it. KM1.7 is therefore an honest MISS (not extracted), kept in this golden
+  # as truth (19.7%). Resolving it needs enumerator/section-aware matching in src — a
+  # change held for sign-off, NOT silently built (CLAUDE.md §A scope guardrail).
+
+bank: hsbc
+period: 2026Q1
+template: KM1
+values:
+  # --- Available capital ($bn → $m): rows 1-3 ---------------------------------
+  KM1.1:                         # row 1  Common equity tier 1 ('CET1') capital — printed 124.0 $bn
+    value: "124000"
+    unit: USD_M
+    ecl_basis: TRANSITIONAL
+    floor_basis: NA
+    page: 5
+  KM1.2:                         # row 2  Tier 1 capital — printed 146.2 $bn
+    value: "146200"
+    unit: USD_M
+    ecl_basis: TRANSITIONAL
+    floor_basis: NA
+    page: 5
+  KM1.3:                         # row 3  Total capital¹ — printed 174.0 $bn
+    value: "174000"
+    unit: USD_M
+    ecl_basis: TRANSITIONAL
+    floor_basis: NA
+    page: 5
+  # --- Risk-weighted assets ($bn → $m): row 4 ---------------------------------
+  KM1.4:                         # row 4  Total RWAs — printed 883.8 $bn
+    value: "883800"
+    unit: USD_M
+    ecl_basis: NA
+    floor_basis: FINAL
+    page: 5
+  # --- Capital ratios (%): rows 5-7 -------------------------------------------
+  KM1.5:                         # row 5  CET1 ratio (%) — printed 14.0
+    value: "14.0"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: FINAL
+    page: 5
+  KM1.6:                         # row 6  Tier 1 ratio (%) — printed 16.5
+    value: "16.5"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: FINAL
+    page: 5
+  KM1.7:                         # row 7  Total capital ratio (%)¹ — printed 19.7 (MEASURED MISS, see header)
+    value: "19.7"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: FINAL
+    page: 5
+  # --- Leverage ratio: rows 13-14 ---------------------------------------------
+  KM1.13:                        # row 13  Total exposure measure excl. central banks ($bn) — printed 2,947.0 $bn
+    value: "2947000"
+    unit: USD_M
+    ecl_basis: NA
+    floor_basis: NA
+    page: 5
+  KM1.14:                        # row 14  Leverage ratio excl. central banks (%) — printed 5.0
+    value: "5.0"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: NA
+    page: 5
+  # --- Liquidity coverage ratio ($bn → $m): rows 15-17 ------------------------
+  KM1.15:                        # row 15  Total high-quality liquid assets — printed 710.6 $bn
+    value: "710600"
+    unit: USD_M
+    ecl_basis: NA
+    floor_basis: NA
+    page: 5
+  KM1.16:                        # row 16  Total net cash outflow — printed 525.1 $bn
+    value: "525100"
+    unit: USD_M
+    ecl_basis: NA
+    floor_basis: NA
+    page: 5
+  KM1.17:                        # row 17  LCR (%) — 12-mo average — printed 135
+    value: "135"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: NA
+    page: 5
+  # --- Net stable funding ratio ($bn → $m): rows 18-20 ------------------------
+  KM1.18:                        # row 18  Total available stable funding — printed 1,645.1 $bn
+    value: "1645100"
+    unit: USD_M
+    ecl_basis: NA
+    floor_basis: NA
+    page: 5
+  KM1.19:                        # row 19  Total required stable funding — printed 1,157.1 $bn
+    value: "1157100"
+    unit: USD_M
+    ecl_basis: NA
+    floor_basis: NA
+    page: 5
+  KM1.20:                        # row 20  NSFR (%) — 4-quarter average — printed 142
+    value: "142"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: NA
+    page: 5

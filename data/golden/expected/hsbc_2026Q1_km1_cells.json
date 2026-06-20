@@ -1,0 +1,234 @@
+{
+  "bank": "hsbc",
+  "period": "2026Q1",
+  "template": "KM1",
+  "source_url": "https://www.hsbc.com/-/files/hsbc/investors/hsbc-results/2026/1q/pdfs/hsbc-holdings-plc/260508-hsbc-holdings-plc-pillar-3-disclosures-at-31-march-2026-english.pdf",
+  "sha256": "23e81299767a6d2b88468e47bea2c3e57718fcf173bc8a619b9f73b39feba8a2",
+  "engine": "DOCLING",
+  "cells": [
+    {
+      "field_code": "KM1.1",
+      "value": "124000.0",
+      "unit": "USD_M",
+      "ecl_basis": "TRANSITIONAL",
+      "floor_basis": "NA",
+      "raw_text": "124.0",
+      "page": 5,
+      "bbox": [
+        337.6839904785156,
+        181.80545385926962,
+        355.1359558105469,
+        189.98158935457468
+      ],
+      "monetary_scale": "billions"
+    },
+    {
+      "field_code": "KM1.2",
+      "value": "146200.0",
+      "unit": "USD_M",
+      "ecl_basis": "TRANSITIONAL",
+      "floor_basis": "NA",
+      "raw_text": "146.2",
+      "page": 5,
+      "bbox": [
+        338.66302490234375,
+        191.7712288349867,
+        355.778076171875,
+        199.95226472616196
+      ],
+      "monetary_scale": "billions"
+    },
+    {
+      "field_code": "KM1.3",
+      "value": "174000.0",
+      "unit": "USD_M",
+      "ecl_basis": "TRANSITIONAL",
+      "floor_basis": "NA",
+      "raw_text": "174.0",
+      "page": 5,
+      "bbox": [
+        337.8628845214844,
+        200.95841128379107,
+        356.0316467285156,
+        209.2431916669011
+      ],
+      "monetary_scale": "billions"
+    },
+    {
+      "field_code": "KM1.4",
+      "value": "883800.0",
+      "unit": "USD_M",
+      "ecl_basis": "NA",
+      "floor_basis": "FINAL",
+      "raw_text": "883.8",
+      "page": 5,
+      "bbox": [
+        336.8049011230469,
+        220.9262053668499,
+        355.5129089355469,
+        229.1035659611225
+      ],
+      "monetary_scale": "billions"
+    },
+    {
+      "field_code": "KM1.5",
+      "value": "14.0",
+      "unit": "PERCENT",
+      "ecl_basis": "NA",
+      "floor_basis": "FINAL",
+      "raw_text": "14.0",
+      "page": 5,
+      "bbox": [
+        339.9394836425781,
+        240.63811257481575,
+        355.0664978027344,
+        248.82659628987312
+      ],
+      "monetary_scale": "billions"
+    },
+    {
+      "field_code": "KM1.6",
+      "value": "16.5",
+      "unit": "PERCENT",
+      "ecl_basis": "NA",
+      "floor_basis": "FINAL",
+      "raw_text": "16.5",
+      "page": 5,
+      "bbox": [
+        340.48712158203125,
+        250.503698438406,
+        355.1484375,
+        258.6525382101536
+      ],
+      "monetary_scale": "billions"
+    },
+    {
+      "field_code": "KM1.13",
+      "value": "2947000.0",
+      "unit": "USD_M",
+      "ecl_basis": "NA",
+      "floor_basis": "NA",
+      "raw_text": "2,947.0",
+      "page": 5,
+      "bbox": [
+        331.0467224121094,
+        405.12266129255295,
+        356.1557312011719,
+        413.42128723859787
+      ],
+      "monetary_scale": "billions"
+    },
+    {
+      "field_code": "KM1.14",
+      "value": "5.0",
+      "unit": "PERCENT",
+      "ecl_basis": "NA",
+      "floor_basis": "NA",
+      "raw_text": "5.0",
+      "page": 5,
+      "bbox": [
+        344.4161071777344,
+        414.92832750082016,
+        355.4464416503906,
+        423.11494439840317
+      ],
+      "monetary_scale": "billions"
+    },
+    {
+      "field_code": "KM1.15",
+      "value": "710600.0",
+      "unit": "USD_M",
+      "ecl_basis": "NA",
+      "floor_basis": "NA",
+      "raw_text": "710.6",
+      "page": 5,
+      "bbox": [
+        337.8598937988281,
+        502.4646693468094,
+        355.2552185058594,
+        510.66813945770264
+      ],
+      "monetary_scale": "billions"
+    },
+    {
+      "field_code": "KM1.16",
+      "value": "525100.0",
+      "unit": "USD_M",
+      "ecl_basis": "NA",
+      "floor_basis": "NA",
+      "raw_text": "525.1",
+      "page": 5,
+      "bbox": [
+        336.1912536621094,
+        531.9925102591515,
+        355.5502014160156,
+        540.1770529150963
+      ],
+      "monetary_scale": "billions"
+    },
+    {
+      "field_code": "KM1.17",
+      "value": "135",
+      "unit": "PERCENT",
+      "ecl_basis": "NA",
+      "floor_basis": "NA",
+      "raw_text": "135",
+      "page": 5,
+      "bbox": [
+        340.7422180175781,
+        541.450689136982,
+        355.7997131347656,
+        549.5935395359993
+      ],
+      "monetary_scale": "billions"
+    },
+    {
+      "field_code": "KM1.18",
+      "value": "1645100.0",
+      "unit": "USD_M",
+      "ecl_basis": "NA",
+      "floor_basis": "NA",
+      "raw_text": "1,645.1",
+      "page": 5,
+      "bbox": [
+        329.5609436035156,
+        561.4354369044304,
+        356.6925964355469,
+        569.4771161675453
+      ],
+      "monetary_scale": "billions"
+    },
+    {
+      "field_code": "KM1.19",
+      "value": "1157100.0",
+      "unit": "USD_M",
+      "ecl_basis": "NA",
+      "floor_basis": "NA",
+      "raw_text": "1,157.1",
+      "page": 5,
+      "bbox": [
+        331.9812316894531,
+        571.4962607622147,
+        356.1498718261719,
+        579.7158581018448
+      ],
+      "monetary_scale": "billions"
+    },
+    {
+      "field_code": "KM1.20",
+      "value": "142",
+      "unit": "PERCENT",
+      "ecl_basis": "NA",
+      "floor_basis": "NA",
+      "raw_text": "142",
+      "page": 5,
+      "bbox": [
+        336.6493225097656,
+        581.1483812332153,
+        356.0257873535156,
+        589.4214421510696
+      ],
+      "monetary_scale": "billions"
+    }
+  ]
+}

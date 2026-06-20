@@ -79,6 +79,39 @@ _SCALE_MULT: dict[str, Decimal] = {
 _MONETARY = {Unit.EUR_M, Unit.GBP_M, Unit.USD_M, Unit.CHF_M, Unit.JPY_M}
 _MILLION = Decimal(10) ** 6
 
+# --- disclosure monetary scale ---------------------------------------------------
+# A disclosure declares the scale of its *bare* monetary cells (those with no inline
+# scale word). The canonical Unit is always millions, so a bank reporting KM1 in
+# billions (e.g. HSBC: "Available capital ($bn)") needs every bare amount lifted x1000
+# into millions. ``millions`` is the default, so a £m / €m filer (Barclays) is
+# untouched. This is the reusable config dimension — never a per-bank code branch.
+_SCALE_NAMES: dict[str, Decimal] = {
+    "thousands": Decimal(10) ** 3,
+    "millions": _MILLION,
+    "billions": Decimal(10) ** 9,
+}
+
+# Public allow-list of disclosure scales; config_load validates each bank's
+# ``monetary_scale`` against this so an unsupported scale fails fast at config load.
+SUPPORTED_SCALES: frozenset[str] = frozenset(_SCALE_NAMES)
+
+
+def scale_multiplier(name: str) -> Decimal:
+    """Resolve a disclosure ``monetary_scale`` name to its absolute multiplier.
+
+    ``"millions" -> 1e6``, ``"billions" -> 1e9``, ``"thousands" -> 1e3``. Raises
+    ``ValueError`` on an unknown name (never a silent default — an unrecognised scale
+    must fail loud, CLAUDE.md §A). Deliberately NOT :class:`NormalisationError`: this
+    is a config-resolution error, not a per-cell parse error, so it must never be
+    swallowed by the per-cell ``except NormalisationError`` in the mapping loop.
+    """
+    try:
+        return _SCALE_NAMES[name]
+    except KeyError:
+        raise ValueError(
+            f"unknown monetary scale {name!r} (known: {', '.join(sorted(_SCALE_NAMES))})"
+        ) from None
+
 
 def detect_scale(raw: str) -> Decimal:
     """Multiplier implied by a trailing scale suffix/word; ``Decimal(1)`` if none."""
@@ -190,15 +223,19 @@ def normalise(
     locale: str,
     unit: Unit,
     *,
+    monetary_scale: Decimal = _MILLION,
     pct_low: Decimal = Decimal(-100),
     pct_high: Decimal = Decimal(1000),
 ) -> Decimal:
     """Route a verbatim cell string to a Decimal by ``unit``. Raises on bad input.
 
     ``raw`` is never mutated; the caller retains it as ``raw_text`` for audit.
-    Monetary convention: a cell with no scale word is assumed already in the
-    template's stated unit (Pillar 3 headers declare e.g. "€m"); a scale word
-    (k/m/bn) converts the absolute amount into that millions unit.
+    Monetary convention: the canonical Unit is millions. A bare cell (no scale word)
+    is interpreted in the disclosure's stated ``monetary_scale`` and lifted into
+    millions — default ``millions`` (1e6) leaves a "€m"/"£m" filer untouched, while
+    ``billions`` (1e9) scales a bare "$bn" amount x1000. An *inline* scale word in
+    the cell itself (k/m/bn) is authoritative and overrides ``monetary_scale`` so a
+    cell is never double-scaled. ``monetary_scale`` is ignored for non-monetary units.
     """
     if unit is Unit.PERCENT:
         pct = parse_decimal(raw, locale)
@@ -219,10 +256,13 @@ def normalise(
         raise NormalisationError(f"unexpected '%' for non-percent unit {unit}: {raw!r}")
 
     if unit in _MONETARY:
-        scale = detect_scale(raw)
-        numeric = _SCALE_RE.sub("", raw) if scale != 1 else raw
-        num = parse_decimal(numeric, locale)
-        return num if scale == 1 else num * scale / _MILLION
+        cell_scale = detect_scale(raw)
+        if cell_scale != 1:
+            # Inline scale word wins: parse the absolute amount, then to millions.
+            numeric = _SCALE_RE.sub("", raw)
+            return parse_decimal(numeric, locale) * cell_scale / _MILLION
+        # Bare cell: interpret in the disclosure's stated scale, lift into millions.
+        return parse_decimal(raw, locale) * monetary_scale / _MILLION
 
     # COUNT / NONE
     return parse_decimal(raw, locale)

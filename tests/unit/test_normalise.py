@@ -14,8 +14,13 @@ from isda_p3.mapping.normalise import (
     detect_scale,
     normalise,
     parse_decimal,
+    scale_multiplier,
 )
 from isda_p3.models import Unit
+
+_MILLION = Decimal(10) ** 6
+_BILLION = Decimal(10) ** 9
+_THOUSAND = Decimal(10) ** 3
 
 # --- parse_decimal: happy paths -------------------------------------------------
 
@@ -162,6 +167,58 @@ def test_normalise_ok(raw, locale, unit, expected):
     result = normalise(raw, locale, unit)
     assert isinstance(result, Decimal)
     assert result == expected
+
+
+# --- monetary_scale dimension (the reusable disclosure-scale fix) ----------------
+# A disclosure may state monetary amounts in millions / billions / thousands. A bare
+# cell ("124.0") carries no scale word, so the comparator would otherwise read it in
+# the field's millions Unit. ``monetary_scale`` declares the disclosure's stated unit,
+# and ``normalise`` converts the bare amount into the canonical millions Unit.
+
+
+def test_scale_multiplier_resolves_names():
+    assert scale_multiplier("millions") == _MILLION
+    assert scale_multiplier("billions") == _BILLION
+    assert scale_multiplier("thousands") == _THOUSAND
+
+
+def test_scale_multiplier_unknown_raises():
+    # A config-resolution error is a ValueError, NOT a NormalisationError — the latter
+    # is what the per-cell mapping loop swallows, so a bad scale must not be eaten there.
+    with pytest.raises(ValueError):
+        scale_multiplier("zillions")
+
+
+def test_normalise_default_scale_is_millions_unchanged():
+    # DEFAULT millions: a bare £m cell is admitted as-is — Barclays must not move.
+    assert normalise("51,219", "en_GB", Unit.GBP_M) == Decimal("51219")
+    assert normalise("51,219", "en_GB", Unit.GBP_M, monetary_scale=_MILLION) == Decimal("51219")
+
+
+def test_normalise_billions_scales_bare_cell_x1000():
+    # HSBC: KM1 monetary rows are bare USD billions; 124.0 $bn == 124000 $m.
+    assert normalise("124.0", "en_GB", Unit.USD_M, monetary_scale=_BILLION) == Decimal("124000")
+    assert normalise("2,947.0", "en_GB", Unit.USD_M, monetary_scale=_BILLION) == Decimal("2947000")
+    # 174.0 $bn -> 174000 $m (exact, no float drift)
+    assert normalise("174.0", "en_GB", Unit.USD_M, monetary_scale=_BILLION) == Decimal("174000")
+
+
+def test_normalise_thousands_scales_bare_cell_down():
+    # A $thousands disclosure: 368,000 thousand == 368 million.
+    assert normalise("368,000", "en_US", Unit.EUR_M, monetary_scale=_THOUSAND) == Decimal("368")
+
+
+def test_normalise_explicit_cell_scale_word_overrides_config():
+    # An explicit per-cell scale word ("1.2bn") is authoritative and must win over the
+    # disclosure default — never double-scaled. 1.2bn == 1200 €m regardless of config.
+    assert normalise("1.2bn", "en_US", Unit.EUR_M, monetary_scale=_BILLION) == Decimal("1200")
+    assert normalise("500m", "en_US", Unit.EUR_M, monetary_scale=_BILLION) == Decimal("500")
+
+
+def test_normalise_scale_does_not_touch_percent_or_ratio():
+    # Scale is a MONETARY concern only; percent/ratio cells ignore monetary_scale.
+    assert normalise("14.0%", "en_GB", Unit.PERCENT, monetary_scale=_BILLION) == Decimal("14.0")
+    assert normalise("0.197", "en_GB", Unit.RATIO, monetary_scale=_BILLION) == Decimal("0.197")
 
 
 @pytest.mark.parametrize(

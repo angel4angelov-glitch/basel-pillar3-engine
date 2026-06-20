@@ -143,6 +143,27 @@ def test_load_banks_unknown_locale_raises(tmp_path):
         load_banks(path)
 
 
+def test_load_banks_unknown_monetary_scale_raises(tmp_path):
+    # A bogus monetary_scale must fail fast at config load — not silently surface later
+    # as a 1000x-wrong magnitude downstream (the HSBC $bn trap, inverted).
+    bad = {**_GOOD_ENTRY, "id": "badscale", "monetary_scale": "zillions"}
+    path = _write_banks(tmp_path, [bad])
+    with pytest.raises(ValueError, match="badscale"):
+        load_banks(path)
+
+
+def test_load_banks_monetary_scale_default_and_billions(tmp_path):
+    # Omitted -> default "millions" (a £m/€m filer is untouched); explicit "billions"
+    # (HSBC) is accepted. Proves the dimension is opt-in config, not a code branch.
+    entries = [
+        {**_GOOD_ENTRY, "id": "defaultscale"},  # no monetary_scale key
+        {**_GOOD_ENTRY, "id": "bnscale", "reporting_currency": "USD", "monetary_scale": "billions"},
+    ]
+    banks = {b.id: b for b in load_banks(_write_banks(tmp_path, entries))}
+    assert banks["defaultscale"].monetary_scale == "millions"
+    assert banks["bnscale"].monetary_scale == "billions"
+
+
 def test_load_banks_real_roster_locales_all_supported():
     # The shipped roster must only use locales normalise() can actually parse.
     from isda_p3.mapping.normalise import SUPPORTED_LOCALES

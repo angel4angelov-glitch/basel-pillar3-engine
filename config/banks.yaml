@@ -23,6 +23,7 @@ banks:
     p3dh_lei: null
     number_locale: en_GB
     reporting_currency: USD
+    monetary_scale: billions          # HSBC KM1 discloses monetary rows in USD $bn (bare cells)
   - id: barclays
     name: Barclays
     jurisdiction: UK

@@ -47,6 +47,7 @@ from ..models import (
     unit_for,
 )
 from .map_fields import _build_label_index, _first_value, _group_rows, _norm_label
+from .normalise import scale_multiplier
 
 log = logging.getLogger(__name__)
 
@@ -176,6 +177,7 @@ def map_unmatched(
     result = mapper.map_rows(prompt)
     unmatched_set = set(unmatched_codes)
     currency = bank.reporting_currency
+    scale = scale_multiplier(bank.monetary_scale)
 
     values: list[FieldValue] = []
     for match in result.matches:
@@ -202,7 +204,7 @@ def map_unmatched(
         label_cell, row_cells = hit
 
         unit = unit_for(field.kind, currency)
-        found = _first_value(row_cells, label_cell, bank.number_locale, unit, code)
+        found = _first_value(row_cells, label_cell, bank.number_locale, unit, code, scale)
         if found is None:
             log.warning(
                 "llm-map %s: row %r matched but no cell normalised — field stays absent",
@@ -227,6 +229,7 @@ def map_unmatched(
                     source_kind=source_kind,
                     engine=engine,
                     bbox=value_cell.bbox,
+                    monetary_scale=bank.monetary_scale,
                 ),
                 mapping=MappingDecision(
                     method=MappingMethod.LLM,

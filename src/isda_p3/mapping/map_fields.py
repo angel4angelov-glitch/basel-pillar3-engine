@@ -40,7 +40,7 @@ from ..models import (
     Unit,
     unit_for,
 )
-from .normalise import NormalisationError, normalise
+from .normalise import NormalisationError, normalise, scale_multiplier
 
 log = logging.getLogger(__name__)
 
@@ -92,19 +92,26 @@ def _find_label_cell(row_cells: list[RawCell]) -> RawCell | None:
 
 
 def _first_value(
-    row_cells: list[RawCell], label_cell: RawCell, locale: str, unit: Unit, code: str
+    row_cells: list[RawCell],
+    label_cell: RawCell,
+    locale: str,
+    unit: Unit,
+    code: str,
+    monetary_scale: Decimal,
 ) -> tuple[RawCell, Decimal] | None:
     """First cell right of the label that ``normalise`` accepts, with its value.
 
     Cells that raise :class:`NormalisationError` (dashes, blanks, footnote-only,
     misaligned percents) are logged and skipped — the parser advances rather than
     admitting a wrong digit. Returns ``None`` if no cell in the row normalises.
+    ``monetary_scale`` is the disclosure's bare-cell scale multiplier (millions for a
+    £m/€m filer, billions for a $bn filer); ignored by non-monetary units.
     """
     for cell in row_cells:
         if cell.col_idx <= label_cell.col_idx:
             continue
         try:
-            return cell, normalise(cell.text, locale, unit)
+            return cell, normalise(cell.text, locale, unit, monetary_scale=monetary_scale)
         except NormalisationError as exc:
             log.debug("map %s: skip non-numeric cell %r (%s)", code, cell.text, exc)
     return None
@@ -171,6 +178,7 @@ def map_fields(
     """
     index = _build_label_index(_group_rows(cells))
     currency = bank.reporting_currency
+    scale = scale_multiplier(bank.monetary_scale)
 
     values: list[FieldValue] = []
     unmatched: list[str] = []
@@ -183,7 +191,7 @@ def map_fields(
         alias, label_cell, row_cells = match
 
         unit = unit_for(field.kind, currency)
-        found = _first_value(row_cells, label_cell, bank.number_locale, unit, field.code)
+        found = _first_value(row_cells, label_cell, bank.number_locale, unit, field.code, scale)
         if found is None:
             log.warning(
                 "map %s: row %r matched alias %r but no cell normalised — treating as absent",
@@ -210,6 +218,7 @@ def map_fields(
                     source_kind=source_kind,
                     engine=engine,
                     bbox=value_cell.bbox,
+                    monetary_scale=bank.monetary_scale,
                 ),
                 mapping=MappingDecision(
                     method=MappingMethod.RULE,

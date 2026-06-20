@@ -27,6 +27,7 @@ from typing import Iterable, Mapping
 
 import yaml
 
+from .mapping.normalise import SUPPORTED_SCALES
 from .models import (
     BBox,
     EclBasis,
@@ -203,6 +204,9 @@ class ExtractedCell:
     raw_text: str
     page: int
     bbox: tuple[float, float, float, float]
+    # Disclosure monetary scale applied at extraction (audit of the bare-cell lift);
+    # default "millions" so an older fixture without the field still loads unchanged.
+    monetary_scale: str = "millions"
 
 
 @dataclass(frozen=True)
@@ -249,6 +253,7 @@ class Fixture:
                     source_kind=SourceKind.PDF,
                     engine=engine,
                     bbox=BBox(page=c.page, x0=x0, y0=y0, x1=x1, y1=y1),
+                    monetary_scale=c.monetary_scale,
                 ),
                 mapping=MappingDecision(
                     method=MappingMethod.RULE,
@@ -291,6 +296,7 @@ def fixture_from_fieldvalues(
                 raw_text=fv.raw_text,
                 page=b.page,
                 bbox=(b.x0, b.y0, b.x1, b.y1),
+                monetary_scale=fv.provenance.monetary_scale,
             )
         )
     if engine is None:
@@ -317,11 +323,29 @@ def write_fixture(fixture: Fixture, path: Path) -> None:
                 "raw_text": c.raw_text,
                 "page": c.page,
                 "bbox": [c.bbox[0], c.bbox[1], c.bbox[2], c.bbox[3]],
+                "monetary_scale": c.monetary_scale,
             }
             for c in fixture.cells
         ],
     }
     Path(path).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _checked_scale(cell: dict, path: Path) -> str:
+    """Read a cell's ``monetary_scale`` (default ``"millions"`` when absent), validated.
+
+    A fixture is an audit artifact: a typo'd or tampered scale ("bllions") must fail
+    loud at load, not silently corrupt the recomputable "raw_text x scale = value"
+    provenance invariant (CLAUDE.md §A — validate at boundaries, no silent failures).
+    Absence is the legal back-compat case (a pre-scale fixture is a millions filer).
+    """
+    scale = cell.get("monetary_scale", "millions")
+    if scale not in SUPPORTED_SCALES:
+        raise ValueError(
+            f"{path}: cell {cell.get('field_code')!r} has unknown monetary_scale "
+            f"{scale!r} (known: {', '.join(sorted(SUPPORTED_SCALES))})"
+        )
+    return scale
 
 
 def load_fixture(path: Path) -> Fixture:
@@ -337,6 +361,7 @@ def load_fixture(path: Path) -> Fixture:
             raw_text=c["raw_text"],
             page=int(c["page"]),
             bbox=(float(c["bbox"][0]), float(c["bbox"][1]), float(c["bbox"][2]), float(c["bbox"][3])),
+            monetary_scale=_checked_scale(c, path),
         )
         for c in raw["cells"]
     )

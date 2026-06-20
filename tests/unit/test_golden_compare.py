@@ -8,6 +8,7 @@ and that accuracy is a Decimal (never a drifting float).
 
 from __future__ import annotations
 
+import json
 from decimal import Decimal
 
 import pytest
@@ -149,7 +150,14 @@ def test_load_golden_empty_values_raises(tmp_path):
 # --- frozen extracted-cells fixture round-trip -----------------------------------
 
 
-def _fv(code: str, value: str, unit: Unit, ecl: EclBasis, floor: FloorBasis) -> FieldValue:
+def _fv(
+    code: str,
+    value: str,
+    unit: Unit,
+    ecl: EclBasis,
+    floor: FloorBasis,
+    monetary_scale: str = "millions",
+) -> FieldValue:
     return FieldValue(
         template=Template.KM1,
         field_code=code,
@@ -164,6 +172,7 @@ def _fv(code: str, value: str, unit: Unit, ecl: EclBasis, floor: FloorBasis) -> 
             source_kind=SourceKind.PDF,
             engine=Engine.DOCLING,
             bbox=BBox(page=5, x0=1.0, y0=2.0, x1=3.0, y1=4.0),
+            monetary_scale=monetary_scale,
         ),
         mapping=MappingDecision(MappingMethod.RULE, None, None, None, None, Decimal("1")),
         raw_text=value,
@@ -191,3 +200,35 @@ def test_fixture_round_trip_preserves_decimals_and_basis(tmp_path):
     assert rebuilt["KM1.5"].floor_basis is FloorBasis.FINAL
     assert rebuilt["KM1.1"].provenance.bbox == BBox(page=5, x0=1.0, y0=2.0, x1=3.0, y1=4.0)
     assert rebuilt["KM1.5"].value == Decimal("14.10")  # exactness, not 14.1 float drift
+
+
+def test_fixture_round_trip_preserves_monetary_scale(tmp_path):
+    # A $bn filer's applied scale must survive freeze -> write -> load -> rebuild, so the
+    # "raw_text x scale = value" audit invariant is reproducible PDF-free (HSBC firewall).
+    fvs = [_fv("KM1.1", "124000", Unit.USD_M, EclBasis.TRANSITIONAL, FloorBasis.NA, "billions")]
+    fx = fixture_from_fieldvalues(
+        fvs, bank="hsbc", period="2026Q1", template="KM1",
+        source_url="https://example/pdf", sha256="deadbeef",
+    )
+    assert fx.cells[0].monetary_scale == "billions"
+    path = tmp_path / "cells.json"
+    write_fixture(fx, path)
+    back = load_fixture(path)
+    assert back.cells[0].monetary_scale == "billions"
+    assert back.to_fieldvalues(bank_id="hsbc")["KM1.1"].provenance.monetary_scale == "billions"
+
+
+def test_load_fixture_rejects_unknown_monetary_scale(tmp_path):
+    # A typo'd/tampered scale must fail loud at load, not silently corrupt the audit.
+    fvs = [_fv("KM1.1", "124000", Unit.USD_M, EclBasis.TRANSITIONAL, FloorBasis.NA, "billions")]
+    fx = fixture_from_fieldvalues(
+        fvs, bank="hsbc", period="2026Q1", template="KM1",
+        source_url="https://example/pdf", sha256="deadbeef",
+    )
+    path = tmp_path / "cells.json"
+    write_fixture(fx, path)
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw["cells"][0]["monetary_scale"] = "bllions"  # typo
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    with pytest.raises(ValueError, match="monetary_scale"):
+        load_fixture(path)

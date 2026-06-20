@@ -201,6 +201,11 @@ class Bank:
     p3dh_lei: str | None
     number_locale: str  # e.g. "en_GB", "de_DE" — drives locale-aware parsing
     reporting_currency: str  # ISO 4217, e.g. "GBP"
+    # Stated scale of this filer's *bare* monetary cells ("millions"|"billions"|
+    # "thousands"); resolved by mapping.normalise.scale_multiplier and applied so the
+    # canonical Unit stays millions. Default "millions" keeps a £m/€m filer untouched;
+    # a $bn filer (HSBC) overrides it in banks.yaml. A config dimension, not a code branch.
+    monetary_scale: str = "millions"
 
 
 @dataclass(frozen=True)
@@ -220,6 +225,11 @@ class Provenance:
     source_kind: SourceKind
     engine: Engine
     bbox: BBox | None  # None for XBRL/structured sources
+    # The disclosure monetary scale actually applied when normalising this figure
+    # ("millions"|"billions"|"thousands"). Audit trail for the scale lift: a reader
+    # sees raw_text "124.0" + value 124000 + this "billions" and can recompute it.
+    # Default "millions" (the no-op lift), so existing provenance is unchanged.
+    monetary_scale: str = "millions"
 
 
 @dataclass(frozen=True)

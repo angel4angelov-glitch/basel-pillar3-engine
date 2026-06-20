@@ -16,7 +16,7 @@ from typing import TypeVar
 import yaml
 
 from isda_p3.config import Paths
-from isda_p3.mapping.normalise import SUPPORTED_LOCALES
+from isda_p3.mapping.normalise import SUPPORTED_LOCALES, SUPPORTED_SCALES
 from isda_p3.models import (
     Bank,
     EclBasis,
@@ -144,6 +144,16 @@ def load_banks(path: Path = Paths.CONFIG / "banks.yaml") -> tuple[Bank, ...]:
                 f"(known: {', '.join(sorted(SUPPORTED_LOCALES))})"
             )
 
+        # Optional: a filer in $bn/$thousands overrides the default "millions". An
+        # unknown scale must fail loud at config load, never silently surface as a
+        # 1000x-wrong magnitude downstream (CLAUDE.md §A — no silent failures).
+        monetary_scale = entry.get("monetary_scale", "millions")
+        if monetary_scale not in SUPPORTED_SCALES:
+            raise ValueError(
+                f"bank {bank_id!r}: monetary_scale {monetary_scale!r} is not supported "
+                f"(known: {', '.join(sorted(SUPPORTED_SCALES))})"
+            )
+
         lei = entry.get("p3dh_lei")
         if lei is not None and not (isinstance(lei, str) and lei.strip()):
             raise ValueError(f"bank {bank_id!r}: p3dh_lei must be a non-empty string or null")
@@ -157,6 +167,7 @@ def load_banks(path: Path = Paths.CONFIG / "banks.yaml") -> tuple[Bank, ...]:
                 p3dh_lei=lei,
                 number_locale=entry["number_locale"],
                 reporting_currency=currency,
+                monetary_scale=monetary_scale,
             )
         )
 

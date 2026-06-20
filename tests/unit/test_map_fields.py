@@ -129,6 +129,47 @@ def test_values_and_raw_text_preserved():
     assert by["KM1.5"].value == Decimal("14.8")
 
 
+# --- monetary_scale threading (the HSBC $bn fix, at the mapping layer) ----------
+
+# bare $bn cells, no inline scale word — exactly HSBC's KM1 layout
+_BARE_BN_KM1 = [
+    ("Common Equity Tier 1 (CET1) capital", "124.0", "132.6"),
+    ("Total risk-weighted assets (RWA)", "883.8", "888.6"),
+    ("Common Equity Tier 1 ratio (%)", "14.0", "14.9"),
+]
+_USD_BN_BANK = Bank(
+    id="hsbc",
+    name="HSBC",
+    jurisdiction=Jurisdiction.UK,
+    ir_url="https://hsbc.com",
+    p3dh_lei=None,
+    number_locale="en_GB",
+    reporting_currency="USD",
+    monetary_scale="billions",
+)
+
+
+def test_billions_bank_lifts_bare_monetary_cells_x1000():
+    by = _by_code(_run(_grid(_BARE_BN_KM1), bank=_USD_BN_BANK)[0])
+    # bare "124.0" $bn -> 124000 $m; the scale is applied at the mapping layer
+    assert by["KM1.1"].value == Decimal("124000")
+    assert by["KM1.1"].unit is Unit.USD_M
+    assert by["KM1.4"].value == Decimal("883800")
+    # percent rows are untouched by monetary_scale
+    assert by["KM1.5"].value == Decimal("14.0")
+    assert by["KM1.5"].unit is Unit.PERCENT
+    # the applied scale is recorded in provenance for audit
+    assert by["KM1.1"].provenance.monetary_scale == "billions"
+
+
+def test_default_millions_bank_leaves_bare_cells_unscaled():
+    # Same grid, default-scale USD bank: a bare "124.0" is read as 124 $m (NOT lifted).
+    # Proves the lift is the config dimension, not an unconditional code path.
+    by = _by_code(_run(_grid(_BARE_BN_KM1), bank=_USD_BANK)[0])
+    assert by["KM1.1"].value == Decimal("124.0")
+    assert by["KM1.1"].provenance.monetary_scale == "millions"
+
+
 def test_mapping_decision_is_rule():
     values, _ = _run(_grid(_CLEAN_KM1))
     fv = _by_code(values)["KM1.1"]
