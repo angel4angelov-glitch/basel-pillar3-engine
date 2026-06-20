@@ -21,6 +21,7 @@ fields:
     row_label_aliases:
       - "Common Equity Tier 1 (CET1) capital"
       - "CET1 capital"
+      - "Common equity tier 1 ('CET1') capital"   # HSBC Q1'26 (straight quotes, lc 'equity tier')
     kind: MONETARY
     ecl_basis: TRANSITIONAL
     floor_basis: NA
@@ -43,6 +44,7 @@ fields:
       - "Total risk-weighted exposure amount"
       - "Total risk-weighted assets (RWA)"
       - "Total RWEA"
+      - "Total RWAs"                               # HSBC Q1'26
     kind: MONETARY
     ecl_basis: NA
     floor_basis: FINAL
@@ -51,6 +53,7 @@ fields:
       - "Common Equity Tier 1 ratio (%)"
       - "CET1 ratio (%)"
       - "CET1 ratio"
+      - "CET1"                                     # HSBC Q1'26 (the '(%)' is in a section header, not the row)
     kind: PERCENT
     ecl_basis: NA
     floor_basis: FINAL
@@ -58,6 +61,7 @@ fields:
     row_label_aliases:
       - "Tier 1 ratio (%)"
       - "Tier 1 capital ratio (%)"
+      - "Tier 1"                                   # HSBC Q1'26 (bare row label under 'Capital ratios (%)' header)
     kind: PERCENT
     ecl_basis: NA
     floor_basis: FINAL
@@ -74,6 +78,7 @@ fields:
       - "Total exposure measure excluding claims on central banks"
       - "Total exposure measure"
       - "Leverage ratio total exposure measure"
+      - "Total exposure measure excluding claims on central banks ($bn)"  # HSBC Q1'26 (unit annotated inline)
     kind: MONETARY
     ecl_basis: NA
     floor_basis: NA
@@ -90,6 +95,7 @@ fields:
       - "Total high-quality liquid assets (HQLA) (Weighted value)"
       - "Total high-quality liquid assets (HQLA)"
       - "Total HQLA"
+      - "Total high-quality liquid assets"         # HSBC Q1'26 (no '(HQLA)' suffix)
     kind: MONETARY
     ecl_basis: NA
     floor_basis: NA
@@ -97,6 +103,7 @@ fields:
     row_label_aliases:
       - "Total net cash outflows (adjusted value)"
       - "Total net cash outflows"
+      - "Total net cash outflow"                   # HSBC Q1'26 (singular)
     kind: MONETARY
     ecl_basis: NA
     floor_basis: NA
@@ -126,6 +133,7 @@ fields:
     row_label_aliases:
       - "NSFR ratio (%)"
       - "Net stable funding ratio (%)"
+      - "NSFR (%)"                                 # HSBC Q1'26
     kind: PERCENT
     ecl_basis: NA
     floor_basis: NA
