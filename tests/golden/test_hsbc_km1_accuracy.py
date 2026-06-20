@@ -15,15 +15,18 @@ the test pins it as the ONLY permitted miss so a NEW regression cannot hide behi
 
 from __future__ import annotations
 
+from dataclasses import replace
 from decimal import Decimal
 
 import pytest
 
 from isda_p3.config import Paths
 from isda_p3.golden import compare_to_golden, load_fixture, load_golden
+from isda_p3.mapping.normalise import normalise, scale_multiplier
 from isda_p3.models import CheckOutcome, CheckType, Template, Unit, ValidationStatus
+from isda_p3.reconcile.checks import magnitude_sanity
 from isda_p3.reconcile.engine import reconcile_template
-from isda_p3.reconcile.identities import load_tolerances, load_weights
+from isda_p3.reconcile.identities import load_magnitude_bands, load_tolerances, load_weights
 
 pytestmark = pytest.mark.golden
 
@@ -105,3 +108,45 @@ def test_capital_ratio_identities_pass_on_real_digits():
     # cannot even be evaluated. Pin that it stayed out of the dataset (no wrong number
     # was admitted in its place).
     assert "KM1.7" not in by, "KM1.7 must stay absent until enumerator-aware matching lands"
+
+
+def test_magnitude_sanity_firewall_on_real_hsbc_digits():
+    # THE H3 HEADLINE (Step 3), on the real frozen HSBC cells. Each monetary cell is read
+    # two ways: at the CORRECT $bn->$m magnitude (the committed value) it PASSES the band;
+    # re-read under the WRONG scale (millions, the H2 bug) it is 1000x low and FAILS. This is
+    # the exact uniform-scale error the scale-invariant ratio identities cannot see (H2).
+    bands = load_magnitude_bands(Template.KM1)
+    fvs = load_fixture(_FIXTURE).to_fieldvalues(bank_id="hsbc")
+    monetary = {c: fv for c, fv in fvs.items() if fv.unit is Unit.USD_M}
+    assert monetary, "expected USD monetary rows in the HSBC fixture"
+
+    for code, fv in monetary.items():
+        # correct (billions-scaled) magnitude -> PASS
+        assert magnitude_sanity(fv, bands).outcome is CheckOutcome.PASS, code
+        # the SAME raw cell parsed under the millions bug (1000x low) -> FAIL
+        wrong_value = normalise(fv.raw_text, "en_GB", Unit.USD_M,
+                                monetary_scale=scale_multiplier("millions"))
+        wrong = replace(fv, value=wrong_value)
+        assert magnitude_sanity(wrong, bands).outcome is CheckOutcome.FAIL, code
+
+
+def test_real_digits_pass_magnitude_no_false_fail():
+    # Step 4 (no false positives): every real HSBC golden cell PASSES its band — the bands
+    # are wide enough never to false-FAIL a correct disclosure. Run via the full engine so the
+    # routing is exercised: no field is FLAGGED by a magnitude FAIL on correct data.
+    bands = load_magnitude_bands(Template.KM1)
+    fvs = load_fixture(_FIXTURE).to_fieldvalues(bank_id="hsbc")
+    for code, fv in fvs.items():
+        r = magnitude_sanity(fv, bands)
+        assert r.outcome is CheckOutcome.PASS, f"{code} false-FAILed magnitude: {r.detail}"
+
+    # and the engine still routes KM1.5/KM1.6 to AUTO_PASSED (magnitude PASS did not demote
+    # them; a magnitude FAIL would have). KM1.7 stays absent (the deferred miss).
+    results = reconcile_template(
+        fvs, Template.KM1, tolerances=load_tolerances(), weights=load_weights()
+    )
+    by = {r.field_value.field_code: r for r in results}
+    for code in ("KM1.5", "KM1.6"):
+        assert by[code].status is ValidationStatus.AUTO_PASSED, code
+        mag = [c for c in by[code].checks if c.check_type is CheckType.MAGNITUDE_SANITY]
+        assert mag and mag[0].outcome is CheckOutcome.PASS, code

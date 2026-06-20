@@ -16,10 +16,14 @@ from __future__ import annotations
 from collections.abc import Mapping
 from decimal import Decimal
 
-from ..models import CheckOutcome, CheckResult, CheckType, FieldValue
+from ..models import CheckOutcome, CheckResult, CheckType, FieldValue, Unit
 from .identities import CrossFoot, Operand, RatioIdentity
 
 _HUNDRED = Decimal("100")
+
+# Monetary units all share the canonical millions scale, so one magnitude band serves
+# every currency (the point of normalising bounds to millions — checks below).
+_MONETARY_UNITS = frozenset({Unit.EUR_M, Unit.GBP_M, Unit.USD_M, Unit.CHF_M, Unit.JPY_M})
 
 
 class CrossBasisError(ValueError):
@@ -209,4 +213,66 @@ def two_engine_agreement(fv: FieldValue, abs_tol: Decimal, rel_tol: Decimal) -> 
         actual=primary,
         tolerance=tol,
         detail=f"{fv.field_code}: {primary_engine.value}={primary} agrees with {agree} (±{tol})",
+    )
+
+
+def _magnitude_class(unit: Unit) -> str | None:
+    """Map a :class:`Unit` to its magnitude-band class, or ``None`` for an unbanded unit.
+
+    Monetary units collapse to one ``"monetary"`` class (bands are millions-normalised, so
+    currency does not matter); PERCENT/RATIO map to their own class. COUNT/NONE carry no
+    magnitude meaning → ``None`` → the check SKIPs (never a silent PASS). A class with no
+    section in ``magnitude_bands.yaml`` (e.g. ``"ratio"`` today) also SKIPs — same safe
+    fallback, resolved against the bands dict by the caller, not here.
+    """
+    if unit in _MONETARY_UNITS:
+        return "monetary"
+    if unit is Unit.PERCENT:
+        return "percent"
+    if unit is Unit.RATIO:
+        return "ratio"
+    return None
+
+
+def magnitude_sanity(
+    fv: FieldValue, bands: Mapping[str, tuple[Decimal, Decimal]]
+) -> CheckResult:
+    """Order-of-magnitude plausibility backstop — the net for a uniform scale error (H3).
+
+    A WIDE, heuristic veto (NOT ground truth): a value outside its class band is 1000×-ish
+    implausible (e.g. a $bn row read as $m), so it FAILs → the field is FLAGGED → review,
+    never emitted. The ratio identities are scale-INVARIANT and miss this; the band does not.
+    A field whose unit has no configured band SKIPs (an honest "not checked", never a silent
+    PASS). Bounds are inclusive and millions-normalised, so the band is currency-agnostic.
+    LIMIT: a wrong value inside its (wide) band still slips — the golden set stays the firewall.
+    """
+    codes = (fv.field_code,)
+    cls = _magnitude_class(fv.unit)
+    # cls is None (unbanded unit) OR cls not in bands (no section) both resolve to None via
+    # dict.get → SKIP below. No guard needed: dict.get(None) is a safe miss, not an error.
+    band = bands.get(cls)
+    if band is None:
+        return CheckResult(
+            check_type=CheckType.MAGNITUDE_SANITY,
+            outcome=CheckOutcome.SKIP,
+            field_codes=codes,
+            expected=None,
+            actual=fv.value,
+            tolerance=None,
+            detail=f"SKIP: no magnitude band for unit {fv.unit.value} ({fv.field_code})",
+        )
+
+    lo, hi = band
+    inside = lo <= fv.value <= hi
+    return CheckResult(
+        check_type=CheckType.MAGNITUDE_SANITY,
+        outcome=CheckOutcome.PASS if inside else CheckOutcome.FAIL,
+        field_codes=codes,
+        expected=None,
+        actual=fv.value,
+        tolerance=None,
+        detail=(
+            f"{fv.field_code}={fv.value} {'within' if inside else 'OUTSIDE'} {cls} magnitude "
+            f"band [{lo}, {hi}] ($m-normalised)"
+        ),
     )

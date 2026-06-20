@@ -24,3 +24,7 @@ confidence:
   ratio_identity_fail: 0.0
   cross_foot_fail: 0.0
   two_engine_fail: 0.5
+  # magnitude_sanity is a VETO-ONLY backstop (chunk H3): a FAIL (value 1000x-ish off its
+  # plausibility band) floors confidence to 0 -> FLAGGED -> review. A magnitude PASS is NOT
+  # positive validation (a wide band is not ground truth), so it does not raise confidence.
+  magnitude_sanity_fail: 0.0

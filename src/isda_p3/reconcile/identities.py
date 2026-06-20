@@ -178,6 +178,40 @@ def load_identities(
     )
 
 
+def load_magnitude_bands(
+    template: Template, path: Path = Paths.CONFIG / "magnitude_bands.yaml"
+) -> dict[str, tuple[Decimal, Decimal]]:
+    """Load ``template``'s per-unit-class magnitude bands from ``magnitude_bands.yaml``.
+
+    Returns ``{class: (min, max)}`` as ``Decimal`` (e.g. ``{"monetary": (1e4, 1e8),
+    "percent": (0, 1000)}``), or ``{}`` if the template has no section — an absent
+    section is a legitimate "no bands configured" (every field SKIPs the check), NOT an
+    error: the magnitude net is opt-in per template (chunk H3). Fails loud on a malformed
+    band (non-numeric bound, or ``min > max``) naming the offending class — a backwards
+    band would silently FAIL every value (§A.2).
+    """
+    raw = _load_yaml_mapping(path)
+    section = raw.get(template.value)
+    if section is None:
+        return {}
+    if not isinstance(section, dict):
+        raise ValueError(
+            f"{path}: {template.value} must be a mapping, got {type(section).__name__}"
+        )
+
+    bands: dict[str, tuple[Decimal, Decimal]] = {}
+    for cls, band in section.items():
+        where = f"{path} {template.value}.{cls}"
+        if not isinstance(band, dict) or "min" not in band or "max" not in band:
+            raise ValueError(f"{where}: must be a mapping with 'min' and 'max'")
+        lo = _parse_decimal(band["min"], where=f"{where}.min")
+        hi = _parse_decimal(band["max"], where=f"{where}.max")
+        if lo > hi:
+            raise ValueError(f"{where}: min {lo} > max {hi} (a backwards band fails every value)")
+        bands[cls] = (lo, hi)
+    return bands
+
+
 def load_tolerances(
     path: Path = Paths.CONFIG / "reconciliation.yaml",
 ) -> dict[str, dict[str, Decimal]]:
@@ -205,7 +239,15 @@ def load_tolerances(
 # Keys :func:`isda_p3.reconcile.confidence.compute_confidence` may look up — every
 # outcome path must have a weight, so absence is a hard config error caught at load.
 _REQUIRED_WEIGHTS = frozenset(
-    {"pass", "skip", "unchecked", "ratio_identity_fail", "cross_foot_fail", "two_engine_fail"}
+    {
+        "pass",
+        "skip",
+        "unchecked",
+        "ratio_identity_fail",
+        "cross_foot_fail",
+        "two_engine_fail",
+        "magnitude_sanity_fail",
+    }
 )
 
 

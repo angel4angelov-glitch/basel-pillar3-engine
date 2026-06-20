@@ -18,14 +18,15 @@ from .. import config
 from ..models import (
     CheckOutcome,
     CheckResult,
+    CheckType,
     FieldValue,
     ReconciliationResult,
     Template,
     ValidationStatus,
 )
-from .checks import cross_foot, ratio_identity, two_engine_agreement
-from .confidence import compute_confidence
-from .identities import load_identities
+from .checks import cross_foot, magnitude_sanity, ratio_identity, two_engine_agreement
+from .confidence import _weight, compute_confidence
+from .identities import load_identities, load_magnitude_bands
 
 
 def applicable_checks(
@@ -52,14 +53,32 @@ def reconcile_field(
     weight pushed the unchecked baseline ≥ threshold (chunk 1.9, §A.2).
     """
     my_checks = applicable_checks(fv.field_code, checks)
-    confidence = compute_confidence(my_checks, weights)
-    validation_basis = tuple(
-        dict.fromkeys(c.check_type for c in my_checks if c.outcome is not CheckOutcome.SKIP)
+
+    # MAGNITUDE_SANITY is a VETO-ONLY backstop (chunk H3): a FAIL flags the field, but a
+    # PASS is NOT positive validation (a wide plausibility band is not ground truth). So it
+    # is held out of BOTH the confidence product and validation_basis — keeping the "skip is
+    # not validation" baseline (chunk 1.9) intact — and a FAIL instead floors confidence and
+    # forces FLAGGED. A field can never auto-accept on a magnitude PASS alone.
+    validation_checks = tuple(
+        c for c in my_checks if c.check_type is not CheckType.MAGNITUDE_SANITY
     )
-    has_fail = any(c.outcome is CheckOutcome.FAIL for c in my_checks)
+    magnitude_failed = any(
+        c.check_type is CheckType.MAGNITUDE_SANITY and c.outcome is CheckOutcome.FAIL
+        for c in my_checks
+    )
+
+    confidence = compute_confidence(validation_checks, weights)
+    if magnitude_failed:
+        # Same loud-on-missing lookup compute_confidence uses for every other weight, so a
+        # weights map lacking this key fails with a named ValueError, not a bare KeyError.
+        confidence = min(confidence, _weight(weights, "magnitude_sanity_fail"))
+    validation_basis = tuple(
+        dict.fromkeys(c.check_type for c in validation_checks if c.outcome is not CheckOutcome.SKIP)
+    )
+    has_fail = any(c.outcome is CheckOutcome.FAIL for c in validation_checks)
     status = (
         ValidationStatus.AUTO_PASSED
-        if confidence >= threshold and not has_fail and validation_basis
+        if confidence >= threshold and not has_fail and not magnitude_failed and validation_basis
         else ValidationStatus.FLAGGED
     )
     return ReconciliationResult(
@@ -78,16 +97,22 @@ def reconcile_template(
     tolerances: Mapping[str, Mapping[str, Decimal]],
     weights: Mapping[str, Decimal],
     threshold: Decimal = config.CONFIDENCE_AUTO_ACCEPT,
+    bands: Mapping[str, tuple[Decimal, Decimal]] | None = None,
 ) -> list[ReconciliationResult]:
     """Run a template's identities over ``values`` and route every field.
 
-    Builds the full check set (cross-field ratio identities + cross-foots, plus a
-    per-field two-engine agreement) once, then scores each field against the checks
-    that reference it. Identity checks are cross-field; two-engine is per-field — both
-    flow through ``applicable_checks`` by ``field_code`` (M2). A :class:`CrossBasisError`
-    raised by a check propagates (a config/data error, never swallowed — C1).
+    Builds the full check set (cross-field ratio identities + cross-foots, plus per-field
+    two-engine agreement and the magnitude-sanity backstop) once, then scores each field
+    against the checks that reference it. Identity checks are cross-field; two-engine and
+    magnitude are per-field — all flow through ``applicable_checks`` by ``field_code`` (M2).
+    A :class:`CrossBasisError` raised by a check propagates (a config/data error, never
+    swallowed — C1). ``bands`` defaults to ``load_magnitude_bands(template)`` (loaded here,
+    exactly as ``identities`` is — the engine already owns this config read); pass it to
+    inject custom bands (the firewall test does this).
     """
     ident = load_identities(template)
+    if bands is None:
+        bands = load_magnitude_bands(template)
     try:
         ratio_tol = tolerances["ratio_identity"]["bp"]
         cf_abs = tolerances["cross_foot"]["abs"]
@@ -105,5 +130,6 @@ def reconcile_template(
     ]
     all_checks += [cross_foot(values, cf, cf_abs, cf_rel) for cf in ident.cross_foots]
     all_checks += [two_engine_agreement(fv, te_abs, te_rel) for fv in values.values()]
+    all_checks += [magnitude_sanity(fv, bands) for fv in values.values()]
 
     return [reconcile_field(fv, all_checks, weights, threshold) for fv in values.values()]

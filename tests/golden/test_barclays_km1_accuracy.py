@@ -18,8 +18,9 @@ import pytest
 from isda_p3.config import Paths
 from isda_p3.golden import compare_to_golden, load_fixture, load_golden
 from isda_p3.models import CheckOutcome, CheckType, Template, ValidationStatus
+from isda_p3.reconcile.checks import magnitude_sanity
 from isda_p3.reconcile.engine import reconcile_template
-from isda_p3.reconcile.identities import load_tolerances, load_weights
+from isda_p3.reconcile.identities import load_magnitude_bands, load_tolerances, load_weights
 
 pytestmark = pytest.mark.golden
 
@@ -72,3 +73,14 @@ def test_capital_ratio_identities_pass_on_real_digits():
         assert ratio_checks, f"{code}: no ratio-identity check fired"
         assert all(c.outcome is CheckOutcome.PASS for c in ratio_checks), code
         assert by[code].status is ValidationStatus.AUTO_PASSED, code
+
+
+def test_real_gbp_digits_pass_magnitude_no_false_fail():
+    # Step 4 (no false positives), GBP side: the magnitude bands are millions-normalised and
+    # currency-agnostic, so every real Barclays (£m) golden cell PASSES — a GBP filer is not
+    # false-FAILed by bands shared with the USD HSBC case. KM1.14 stays the only miss.
+    bands = load_magnitude_bands(Template.KM1)
+    fvs = load_fixture(_FIXTURE).to_fieldvalues(bank_id="barclays")
+    for code, fv in fvs.items():
+        r = magnitude_sanity(fv, bands)
+        assert r.outcome is CheckOutcome.PASS, f"{code} false-FAILed magnitude: {r.detail}"

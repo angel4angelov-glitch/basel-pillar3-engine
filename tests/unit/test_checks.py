@@ -31,6 +31,7 @@ from isda_p3.models import (
 from isda_p3.reconcile.checks import (
     CrossBasisError,
     cross_foot,
+    magnitude_sanity,
     ratio_identity,
     two_engine_agreement,
 )
@@ -39,6 +40,7 @@ from isda_p3.reconcile.identities import (
     Operand,
     RatioIdentity,
     load_identities,
+    load_magnitude_bands,
     load_tolerances,
 )
 
@@ -592,3 +594,103 @@ def test_load_identities_cross_foot_bad_operand_basis_raises(tmp_path):
     )
     with pytest.raises(ValueError, match="BOGUS"):
         load_identities(Template.KM1, path=bad)
+
+
+# --- magnitude_sanity (chunk H3) — the uniform-scale backstop -------------------
+
+# The real KM1 monetary band ($m-normalised, currency-agnostic) and percent band.
+_KM1_BANDS = load_magnitude_bands(Template.KM1)
+
+
+def test_magnitude_sanity_in_band_passes():
+    # HSBC CET1 at the correct $bn->$m magnitude (124000) is well inside [1e4, 1e8].
+    r = magnitude_sanity(_fv("KM1.1", "124000", unit=Unit.USD_M), _KM1_BANDS)
+    assert r.outcome is CheckOutcome.PASS
+    assert r.check_type is CheckType.MAGNITUDE_SANITY
+    assert r.field_codes == ("KM1.1",)
+    assert r.actual == Decimal("124000")
+
+
+def test_magnitude_sanity_1000x_low_fails():
+    # The H2 trap: $bn read as $m -> 124 instead of 124000 -> below 1e4 -> FAIL.
+    r = magnitude_sanity(_fv("KM1.1", "124", unit=Unit.USD_M), _KM1_BANDS)
+    assert r.outcome is CheckOutcome.FAIL
+    assert "OUTSIDE" in r.detail
+
+
+def test_magnitude_sanity_too_high_fails():
+    # A value above the ceiling ($100tn = 1e8 $m) is implausible for any bank -> FAIL.
+    r = magnitude_sanity(_fv("KM1.4", "999000000", unit=Unit.GBP_M), _KM1_BANDS)
+    assert r.outcome is CheckOutcome.FAIL
+
+
+def _mag(value: str, unit: Unit) -> CheckOutcome:
+    return magnitude_sanity(_fv("KM1.1", value, unit=unit), _KM1_BANDS).outcome
+
+
+def test_magnitude_sanity_currency_agnostic():
+    # All five monetary units of the same magnitude share one band (bounds are $m-normalised).
+    for unit in (Unit.GBP_M, Unit.USD_M, Unit.EUR_M, Unit.CHF_M, Unit.JPY_M):
+        assert _mag("50000", unit) is CheckOutcome.PASS
+
+
+def test_magnitude_sanity_inclusive_edges():
+    # Bounds are inclusive: a value exactly on min or max PASSES; one below min FAILS.
+    assert _mag("10000", Unit.USD_M) is CheckOutcome.PASS
+    assert _mag("100000000", Unit.USD_M) is CheckOutcome.PASS
+    assert _mag("9999", Unit.USD_M) is CheckOutcome.FAIL
+
+
+def test_magnitude_sanity_percent_band():
+    assert _mag("14.0", Unit.PERCENT) is CheckOutcome.PASS
+    assert _mag("5000", Unit.PERCENT) is CheckOutcome.FAIL
+
+
+def test_magnitude_sanity_no_band_skips_not_passes():
+    # A unit with no configured band (COUNT) SKIPs — an honest "not checked", never a
+    # silent PASS that would wave through any magnitude (silent-failure guard, §A.2).
+    r = magnitude_sanity(_fv("KM1.X", "7", unit=Unit.COUNT), _KM1_BANDS)
+    assert r.outcome is CheckOutcome.SKIP
+    assert "no magnitude band" in r.detail
+
+
+def test_magnitude_sanity_ratio_unit_skips_when_no_ratio_band():
+    # RATIO is a magnitude-bearing class, but no "ratio" band is configured for KM1 → SKIP
+    # (the same safe "no band" fallback as COUNT/NONE, never a silent PASS).
+    r = magnitude_sanity(_fv("KM1.X", "0.146", unit=Unit.RATIO), _KM1_BANDS)
+    assert r.outcome is CheckOutcome.SKIP
+
+
+def test_magnitude_sanity_decimal_exact_no_float():
+    # The comparison is Decimal-exact; no float ever touches the value.
+    r = magnitude_sanity(_fv("KM1.1", "10000.000000001", unit=Unit.USD_M), _KM1_BANDS)
+    assert isinstance(r.actual, Decimal)
+    assert r.outcome is CheckOutcome.PASS  # just inside
+
+
+# --- load_magnitude_bands -------------------------------------------------------
+
+
+def test_load_magnitude_bands_km1_present():
+    bands = load_magnitude_bands(Template.KM1)
+    assert bands["monetary"] == (Decimal("10000"), Decimal("100000000"))
+    assert bands["percent"] == (Decimal("0"), Decimal("1000"))
+
+
+def test_load_magnitude_bands_absent_section_is_empty_not_error():
+    # OV1 has no section -> {} (every field SKIPs), NOT an error.
+    assert load_magnitude_bands(Template.OV1) == {}
+
+
+def test_load_magnitude_bands_backwards_band_raises(tmp_path):
+    bad = tmp_path / "magnitude_bands.yaml"
+    bad.write_text("KM1:\n  monetary: {min: 100, max: 1}\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="min .* > max"):
+        load_magnitude_bands(Template.KM1, path=bad)
+
+
+def test_load_magnitude_bands_missing_bound_raises(tmp_path):
+    bad = tmp_path / "magnitude_bands.yaml"
+    bad.write_text("KM1:\n  monetary: {min: 100}\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="min.*max"):
+        load_magnitude_bands(Template.KM1, path=bad)

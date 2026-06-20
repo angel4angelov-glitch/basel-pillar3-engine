@@ -1,0 +1,34 @@
+# magnitude_bands.yaml — order-of-magnitude plausibility bands (chunk H3).
+#
+# A WIDE, HEURISTIC BACKSTOP — explicitly NOT ground truth. It exists to catch the one
+# error class reconciliation is blind to: a UNIFORM monetary scale/unit error (e.g. a
+# disclosure in US$bn read as US$m → every monetary row 1000× too small). The capital-
+# ratio identities are SCALE-INVARIANT (CET1/RWA is unchanged if both are ×1000), so they
+# never see a uniform scale error; only the golden set did (H2). This table is the cheap,
+# key-free deterministic net that flags it even with no golden.
+#
+# LIMIT (do not overclaim): the bands are WIDE. A wrong value that still lands inside its
+# band slips straight through — the golden set remains the firewall. A FAIL here ⇒ FLAGGED
+# ⇒ human-review queue, never emitted; it is a veto, not a positive validation.
+#
+# Bounds are in the canonical MILLIONS unit, so they are CURRENCY-AGNOSTIC (GBP_M, USD_M,
+# EUR_M all share one band — that is the whole point: a £m and a $m row of the same metric
+# have the same order of magnitude). Bands are keyed per-TEMPLATE × per-unit-CLASS, never
+# per-bank: granularity differs by template (KM1 headline rows are all G-SIB-large; OV1 has
+# fine-grained RWA sub-rows that are legitimately small), so a single global band would
+# false-FAIL. A template/class with NO band here ⇒ the check SKIPs (not a silent PASS).
+#
+# KM1 (the benchmarked headline table). For the G-SIB universe:
+#  - monetary: capital ($15bn–$250bn), RWA ($300bn–$2tn), leverage exposure ($1tn–$4tn),
+#    LCR/NSFR components ($100bn–$2tn) all sit in [1e4, 1e8] $m. The smallest real value
+#    (smallest G-SIB CET1, ~$15bn = 1.5e4 $m) is well above 1e4; a 1000×-low misread of the
+#    LARGEST value (leverage ~$3tn → 2,947 $m) is well below 1e4 → caught. Upper 1e8 ($100tn)
+#    is a generous ceiling no bank approaches → no false-FAIL high.
+#  - percent: CET1/leverage/LCR/NSFR ratios span ~0–200%; [0, 1000] is a wide plausibility
+#    band (a ratio >1000% or <0% on these rows is implausible).
+KM1:
+  monetary: {min: 10000, max: 100000000}   # 1e4 .. 1e8 US$m / £m / €m
+  percent:  {min: 0, max: 1000}            # ratios disclosed as %
+# OV1 and other templates: no bands yet → magnitude_sanity SKIPs for their fields (an
+# honest, logged gap — OV1's granular RWA sub-rows need their own, wider treatment; out of
+# scope for H3). Add a section here to extend the net to another template.

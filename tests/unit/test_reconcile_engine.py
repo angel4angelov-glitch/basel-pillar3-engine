@@ -395,6 +395,50 @@ def test_reconcile_template_missing_rwa_flags_all_ratio_fields():
         assert by[code].validation_basis == (), code  # no check actually fired
 
 
+# --- magnitude_sanity wired into the engine (chunk H3) -------------------------
+
+
+def test_magnitude_fail_flags_monetary_rows_even_when_ratio_identity_passes():
+    # THE H3 FIREWALL, at engine level. Scale EVERY monetary row down 1000x (the $bn-read-as-
+    # $m bug). The ratio identities are SCALE-INVARIANT — 50/368×100 == 50000/368000×100 —
+    # so they still PASS and reconciliation is blind to the error. magnitude_sanity is not:
+    # the mis-scaled capital/RWA rows fall below the band → FAIL → FLAGGED.
+    values = _clean_km1()
+    values["KM1.1"] = _fv("KM1.1", "50", ecl=EclBasis.TRANSITIONAL, unit=Unit.GBP_M)
+    values["KM1.2"] = _fv("KM1.2", "55", ecl=EclBasis.TRANSITIONAL, unit=Unit.GBP_M)
+    values["KM1.3"] = _fv("KM1.3", "65", ecl=EclBasis.TRANSITIONAL, unit=Unit.GBP_M)
+    values["KM1.4"] = _fv("KM1.4", "368", floor=FloorBasis.FINAL, unit=Unit.GBP_M)
+    results = reconcile_template(values, Template.KM1, tolerances=_TOLS, weights=_WEIGHTS)
+    by = {r.field_value.field_code: r for r in results}
+
+    # the mis-scaled monetary amounts are caught and FLAGGED, confidence floored to 0
+    for code in ("KM1.1", "KM1.2", "KM1.3", "KM1.4"):
+        mag = [c for c in by[code].checks if c.check_type is CheckType.MAGNITUDE_SANITY]
+        assert mag and mag[0].outcome is CheckOutcome.FAIL, code
+        assert by[code].status is ValidationStatus.FLAGGED, code
+        assert by[code].confidence == Decimal("0"), code
+    # the ratio identity still PASSED (scale-invariant) — proof reconciliation alone missed it
+    cet1_ratio = [c for c in by["KM1.5"].checks if c.check_type is CheckType.RATIO_IDENTITY]
+    assert cet1_ratio and cet1_ratio[0].outcome is CheckOutcome.PASS
+    # the in-band percent ratio rows are unaffected (the ratios themselves are plausible)
+    for code in ("KM1.5", "KM1.6", "KM1.7"):
+        assert by[code].status is ValidationStatus.AUTO_PASSED, code
+
+
+def test_magnitude_pass_alone_never_auto_passes():
+    # VETO-ONLY law: a field whose only fired check is a magnitude PASS must NOT auto-accept —
+    # a wide plausibility band is a backstop, not ground truth. KM1.13 (leverage exposure) has
+    # no ratio identity, so magnitude is its only check; it stays FLAGGED, and MAGNITUDE_SANITY
+    # is deliberately absent from validation_basis.
+    values = {"KM1.13": _fv("KM1.13", "1321321", unit=Unit.GBP_M)}
+    r = reconcile_template(values, Template.KM1, tolerances=_TOLS, weights=_WEIGHTS)[0]
+    mag = [c for c in r.checks if c.check_type is CheckType.MAGNITUDE_SANITY]
+    assert mag and mag[0].outcome is CheckOutcome.PASS  # it DID pass (in band)
+    assert CheckType.MAGNITUDE_SANITY not in r.validation_basis  # but never counts as validation
+    assert r.validation_basis == ()
+    assert r.status is ValidationStatus.FLAGGED  # so a lone magnitude PASS cannot auto-accept
+
+
 def test_reconcile_template_missing_tolerance_key_raises_with_context():
     # A tolerances dict missing a sub-key fails loud with template context, not a
     # bare KeyError mid-pipeline.
