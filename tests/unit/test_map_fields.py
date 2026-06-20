@@ -105,9 +105,13 @@ def _by_code(values: list[FieldValue]) -> dict[str, FieldValue]:
 
 def test_clean_km1_maps_all_seven_fields():
     values, unmatched = _run(_grid(_CLEAN_KM1))
-    assert unmatched == []
     assert len(values) == 7
     assert {fv.field_code for fv in values} == {f"KM1.{i}" for i in range(1, 8)}
+    # This fixture is the 7 headline rows only; the leverage/LCR/NSFR codes the
+    # template also declares (KM1.13-20) are legitimately unmatched in this grid —
+    # absent, never fabricated (CLAUDE.md §A.2).
+    expected_unmatched = {f.code for f in _SPEC.fields} - {f"KM1.{i}" for i in range(1, 8)}
+    assert set(unmatched) == expected_unmatched
 
 
 def test_units_resolved_by_kind_and_currency():
@@ -159,6 +163,25 @@ def test_uk_enumerator_token_stripped():
     cells = _grid([("UK 7a Total capital ratio (%)", "18.8")])
     values, _ = _run(cells)
     assert "KM1.7" in _by_code(values)
+
+
+def test_trailing_footnote_marker_stripped_from_label():
+    # Pillar 3 footnotes render as a trailing " 1"/" 3" (Docling on the real Barclays
+    # KM1). The row must still match its alias — the label-side analogue of stripping
+    # footnotes from values; this is the fix that lifts real KM1.3/KM1.7/KM1.17.
+    values, _ = _run(_grid([
+        ("Total capital 1", "60,000"),
+        ("Total capital ratio (%) 3", "18.8"),
+    ]))
+    by = _by_code(values)
+    assert by["KM1.3"].value == Decimal("60000")
+    assert by["KM1.7"].value == Decimal("18.8")
+
+
+def test_internal_digit_is_not_treated_as_a_footnote():
+    # "Tier 1 capital" ends in a word, not a bare number — its internal "1" must survive.
+    values, _ = _run(_grid([("Tier 1 capital", "52,000")]))
+    assert _by_code(values)["KM1.2"].value == Decimal("52000")
 
 
 # --- false-positive guard ------------------------------------------------------

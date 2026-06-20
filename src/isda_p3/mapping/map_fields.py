@@ -52,16 +52,30 @@ log = logging.getLogger(__name__)
 # boundary there). Anchored to the start; applied once.
 _ENUM_RE = re.compile(r"^[\s.)(]*(?:uk\s+)?\d+[a-z]?[.):]?(?=\s|$)\s*")
 _WS_RE = re.compile(r"\s+")
+# A trailing footnote reference. Pillar 3 tables footnote rows (e.g. "Total capital¹",
+# "Liquidity coverage ratio (%)³"); Docling renders the superscript as a trailing
+# " 1"/" 3" (space + 1-2 ASCII digits). Strip it so the row still matches its alias —
+# the label-side analogue of stripping footnotes from *values* in mapping.normalise.
+# Anchored to the END only and limited to 1-2 digits: no real KM1/OV1 row label ends
+# in a bare standalone number, so a genuine label is never truncated.
+_FOOTNOTE_TAIL_RE = re.compile(r"\s+\d{1,2}$")
 
 
 def _norm_label(text: str) -> str:
-    """Lowercase, collapse whitespace, strip a leading enumerator + its punctuation.
+    """Lowercase, collapse whitespace, strip a leading enumerator and a trailing footnote.
 
     Applied identically to both aliases and row labels so that matching is exact
     equality on the cleaned strings.
     """
     s = _WS_RE.sub(" ", text.strip().lower())
-    return _ENUM_RE.sub("", s, count=1).strip()
+    s = _ENUM_RE.sub("", s, count=1)
+    stripped = _FOOTNOTE_TAIL_RE.sub("", s)
+    if stripped != s:
+        # Footnote stripped. No current KM1/OV1 label ends in a bare number, but log it
+        # so that if a future template's label legitimately ends in a tier number, the
+        # resulting mis-map is diagnosable rather than silent (CLAUDE.md §A.2).
+        log.debug("_norm_label: stripped trailing footnote %r -> %r", s, stripped)
+    return stripped.strip()
 
 
 def _is_label_text(text: str) -> bool:

@@ -7,8 +7,14 @@
 # output-floor axis). The two basis axes are orthogonal and pin identities to a
 # single basis (CLAUDE.md §A C1).
 #
-# Headline rows only (capital, RWA, ratios). Buffer/leverage/LCR rows land later.
-# CRR3 per-tier cadence + output-floor labels to be confirmed vs EBA ITS 2024/3172.
+# Headline capital/RWA/ratio rows (1-7) plus the leverage (13/14), LCR (15-17) and
+# NSFR (18-20) rows — the core ~14 KM1 metrics. Buffer/SREP rows (UK 7a-12) stay out
+# of scope. The leverage/LCR/NSFR rows carry no ECL/floor axis (NA/NA). Row codes +
+# labels confirmed against the real Barclays KM1 (Q1 2026, pages 5-6); see
+# data/golden/expected/barclays_2026Q1_km1.yaml. NB: the LCR ratio (KM1.17) and NSFR
+# ratio (KM1.20) are disclosed AVERAGES (12-month / 4-quarter), so their spot
+# components (15/16, 18/19) deliberately have NO reconciliation identity (would FAIL
+# on methodology, not extraction — see config/identities.yaml).
 template: KM1
 fields:
   - code: KM1.1
@@ -62,3 +68,64 @@ fields:
     kind: PERCENT
     ecl_basis: NA
     floor_basis: FINAL
+  # --- Leverage ratio (KM1 rows 13-14) ----------------------------------------
+  - code: KM1.13
+    row_label_aliases:
+      - "Total exposure measure excluding claims on central banks"
+      - "Total exposure measure"
+      - "Leverage ratio total exposure measure"
+    kind: MONETARY
+    ecl_basis: NA
+    floor_basis: NA
+  - code: KM1.14
+    row_label_aliases:
+      - "Leverage ratio excluding claims on central banks (%)"
+      - "Leverage ratio (%)"
+    kind: PERCENT
+    ecl_basis: NA
+    floor_basis: NA
+  # --- Liquidity Coverage Ratio (KM1 rows 15-17) ------------------------------
+  - code: KM1.15
+    row_label_aliases:
+      - "Total high-quality liquid assets (HQLA) (Weighted value)"
+      - "Total high-quality liquid assets (HQLA)"
+      - "Total HQLA"
+    kind: MONETARY
+    ecl_basis: NA
+    floor_basis: NA
+  - code: KM1.16
+    row_label_aliases:
+      - "Total net cash outflows (adjusted value)"
+      - "Total net cash outflows"
+    kind: MONETARY
+    ecl_basis: NA
+    floor_basis: NA
+  - code: KM1.17
+    row_label_aliases:
+      - "Liquidity coverage ratio (%)"
+      - "LCR (%)"
+    kind: PERCENT
+    ecl_basis: NA
+    floor_basis: NA
+  # --- Net Stable Funding Ratio (KM1 rows 18-20) ------------------------------
+  - code: KM1.18
+    row_label_aliases:
+      - "Total available stable funding"
+      - "Available stable funding"
+    kind: MONETARY
+    ecl_basis: NA
+    floor_basis: NA
+  - code: KM1.19
+    row_label_aliases:
+      - "Total required stable funding"
+      - "Required stable funding"
+    kind: MONETARY
+    ecl_basis: NA
+    floor_basis: NA
+  - code: KM1.20
+    row_label_aliases:
+      - "NSFR ratio (%)"
+      - "Net stable funding ratio (%)"
+    kind: PERCENT
+    ecl_basis: NA
+    floor_basis: NA

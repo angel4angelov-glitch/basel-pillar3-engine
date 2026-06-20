@@ -1,0 +1,131 @@
+# Barclays PLC — KM1 "Key metrics" golden ground truth (chunk 5.1).
+#
+# INDEPENDENT GROUND TRUTH. Every value below was transcribed BY HUMAN VISION from
+# the rendered PDF pages (Read tool, rendered image — NOT pdfplumber/Camelot/Docling
+# text). The deterministic extraction stack is then MEASURED against this file; it
+# never authored it (CLAUDE.md §A.1/§A.3 — even ground truth gets a human eye, and
+# the extractor is never the source of a number). Current-period column only
+# (As at 31.03.26), which the rule-mapper reads as the first numeric cell per row.
+#
+# Provenance (one PDF, one period):
+source:
+  bank: Barclays PLC (consolidated group)
+  as_at: 2026-03-31
+  source_url: https://home.barclays/content/dam/home-barclays/documents/investor-relations/ResultAnnouncements/Q12026Results/Q126-BPLC-Pillar-3.pdf
+  retrieved: 2026-06-20
+  sha256: 897e31da5cfc9ef27accf6f5c23ae826374e13db632400cdfb4dca4b7803a685
+  currency: GBP
+  unit: million (£m)
+  pages: {part1: 5, part2: 6}          # KM1 spans two pages in this report
+  verified_by: human-vision
+  verified_date: 2026-06-20
+  # Basis of the headline rows (two-pass check, SCHEMA.md):
+  #  - Capital rows 1/2/3 are the transitional (headline) own-funds lines; by 2026
+  #    IFRS 9 transitional relief has fully run off, so transitional == fully-loaded
+  #    in value, but we tag TRANSITIONAL to match the EBA row + config/templates/km1.yaml.
+  #  - RWA (4) + capital ratios (5/6/7) are post-output-floor => floor_basis FINAL.
+  #  - Leverage / LCR / NSFR rows carry neither axis => NA/NA.
+  # BASIS TRAP (documented, not a bug): footnote 3 states the LCR ratio (row 17) is
+  # the average of the last 12 spot month-end ratios, and footnote 4 states the NSFR
+  # ratio (row 20) is the average of the last four spot quarter-end ratios. Their
+  # components (rows 15/16, 18/19) are NOT a clean point-in-time numerator/denominator
+  # for the disclosed ratio, so HQLA/outflows and ASF/RSF must NOT be reconciled into
+  # the LCR/NSFR ratio (would FAIL on methodology, not on a misread). Captured here
+  # for digit-fidelity measurement only.
+
+bank: barclays
+period: 2026Q1
+template: KM1
+values:
+  # --- Part 1 (page 5): available own funds, RWA, capital ratios ---------------
+  KM1.1:                         # row 1  Common Equity Tier 1 (CET1) capital
+    value: "51219"
+    unit: GBP_M
+    ecl_basis: TRANSITIONAL
+    floor_basis: NA
+    page: 5
+  KM1.2:                         # row 2  Tier 1 capital
+    value: "63933"
+    unit: GBP_M
+    ecl_basis: TRANSITIONAL
+    floor_basis: NA
+    page: 5
+  KM1.3:                         # row 3  Total capital
+    value: "71789"
+    unit: GBP_M
+    ecl_basis: TRANSITIONAL
+    floor_basis: NA
+    page: 5
+  KM1.4:                         # row 4  Total risk-weighted exposure amount
+    value: "364462"
+    unit: GBP_M
+    ecl_basis: NA
+    floor_basis: FINAL
+    page: 5
+  KM1.5:                         # row 5  CET1 ratio (%)
+    value: "14.1"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: FINAL
+    page: 5
+  KM1.6:                         # row 6  Tier 1 ratio (%)
+    value: "17.5"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: FINAL
+    page: 5
+  KM1.7:                         # row 7  Total capital ratio (%)
+    value: "19.7"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: FINAL
+    page: 5
+  # --- Part 2 (page 6): leverage, LCR, NSFR -----------------------------------
+  KM1.13:                        # row 13  Total exposure measure (excl. central banks)
+    value: "1321321"
+    unit: GBP_M
+    ecl_basis: NA
+    floor_basis: NA
+    page: 6
+  KM1.14:                        # row 14  Leverage ratio (excl. central banks) (%)
+    value: "4.8"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: NA
+    page: 6
+  KM1.15:                        # row 15  Total HQLA (weighted value)
+    value: "320540"
+    unit: GBP_M
+    ecl_basis: NA
+    floor_basis: NA
+    page: 6
+  KM1.16:                        # row 16  Total net cash outflows (adjusted value)
+    value: "194616"
+    unit: GBP_M
+    ecl_basis: NA
+    floor_basis: NA
+    page: 6
+  KM1.17:                        # row 17  Liquidity coverage ratio (%) — 12-mo average
+    value: "165.4"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: NA
+    page: 6
+  KM1.18:                        # row 18  Total available stable funding
+    value: "639179"
+    unit: GBP_M
+    ecl_basis: NA
+    floor_basis: NA
+    page: 6
+  KM1.19:                        # row 19  Total required stable funding
+    value: "472285"
+    unit: GBP_M
+    ecl_basis: NA
+    floor_basis: NA
+    page: 6
+  KM1.20:                        # row 20  NSFR ratio (%) — 4-quarter average
+    value: "135.4"
+    unit: PERCENT
+    ecl_basis: NA
+    floor_basis: NA
+    page: 6

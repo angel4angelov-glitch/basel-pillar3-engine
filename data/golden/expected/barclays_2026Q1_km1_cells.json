@@ -1,0 +1,220 @@
+{
+  "bank": "barclays",
+  "period": "2026Q1",
+  "template": "KM1",
+  "source_url": "https://home.barclays/content/dam/home-barclays/documents/investor-relations/ResultAnnouncements/Q12026Results/Q126-BPLC-Pillar-3.pdf",
+  "sha256": "897e31da5cfc9ef27accf6f5c23ae826374e13db632400cdfb4dca4b7803a685",
+  "engine": "DOCLING",
+  "cells": [
+    {
+      "field_code": "KM1.1",
+      "value": "51219",
+      "unit": "GBP_M",
+      "ecl_basis": "TRANSITIONAL",
+      "floor_basis": "NA",
+      "raw_text": "51,219",
+      "page": 5,
+      "bbox": [
+        350.57001,
+        194.83153240000001,
+        375.56201000000016,
+        201.87788391597826
+      ]
+    },
+    {
+      "field_code": "KM1.2",
+      "value": "63933",
+      "unit": "GBP_M",
+      "ecl_basis": "TRANSITIONAL",
+      "floor_basis": "NA",
+      "raw_text": "63,933",
+      "page": 5,
+      "bbox": [
+        350.57001,
+        206.83153240000001,
+        375.56201000000016,
+        213.87788391597826
+      ]
+    },
+    {
+      "field_code": "KM1.3",
+      "value": "71789",
+      "unit": "GBP_M",
+      "ecl_basis": "TRANSITIONAL",
+      "floor_basis": "NA",
+      "raw_text": "71,789",
+      "page": 5,
+      "bbox": [
+        350.57001,
+        218.83153240000001,
+        375.56201000000016,
+        225.87788391597826
+      ]
+    },
+    {
+      "field_code": "KM1.4",
+      "value": "364462",
+      "unit": "GBP_M",
+      "ecl_basis": "NA",
+      "floor_basis": "FINAL",
+      "raw_text": "364,462",
+      "page": 5,
+      "bbox": [
+        345.97,
+        242.83153240000001,
+        375.5620000000002,
+        249.87788391597826
+      ]
+    },
+    {
+      "field_code": "KM1.5",
+      "value": "14.1",
+      "unit": "PERCENT",
+      "ecl_basis": "NA",
+      "floor_basis": "FINAL",
+      "raw_text": "14.1%",
+      "page": 5,
+      "bbox": [
+        351.38,
+        266.8315324,
+        374.3640000000001,
+        273.87788391597826
+      ]
+    },
+    {
+      "field_code": "KM1.6",
+      "value": "17.5",
+      "unit": "PERCENT",
+      "ecl_basis": "NA",
+      "floor_basis": "FINAL",
+      "raw_text": "17.5%",
+      "page": 5,
+      "bbox": [
+        351.38,
+        278.8315324,
+        374.3640000000001,
+        285.87788391597826
+      ]
+    },
+    {
+      "field_code": "KM1.7",
+      "value": "19.7",
+      "unit": "PERCENT",
+      "ecl_basis": "NA",
+      "floor_basis": "FINAL",
+      "raw_text": "19.7%",
+      "page": 5,
+      "bbox": [
+        351.38,
+        290.8315324,
+        374.3640000000001,
+        297.87788391597826
+      ]
+    },
+    {
+      "field_code": "KM1.13",
+      "value": "1321321",
+      "unit": "GBP_M",
+      "ecl_basis": "NA",
+      "floor_basis": "NA",
+      "raw_text": "1,321,321",
+      "page": 6,
+      "bbox": [
+        335.529953956604,
+        138.3423186391592,
+        373.0711450576782,
+        147.55409102141857
+      ]
+    },
+    {
+      "field_code": "KM1.15",
+      "value": "320540",
+      "unit": "GBP_M",
+      "ecl_basis": "NA",
+      "floor_basis": "NA",
+      "raw_text": "320,540",
+      "page": 6,
+      "bbox": [
+        344.11714458465576,
+        301.14446687698364,
+        374.27971744537354,
+        310.5795364379883
+      ]
+    },
+    {
+      "field_code": "KM1.16",
+      "value": "194616",
+      "unit": "GBP_M",
+      "ecl_basis": "NA",
+      "floor_basis": "NA",
+      "raw_text": "194,616",
+      "page": 6,
+      "bbox": [
+        346.041784286499,
+        337.76101100444794,
+        374.94026374816895,
+        347.2617338895798
+      ]
+    },
+    {
+      "field_code": "KM1.17",
+      "value": "165.4",
+      "unit": "PERCENT",
+      "ecl_basis": "NA",
+      "floor_basis": "NA",
+      "raw_text": "165.4%",
+      "page": 6,
+      "bbox": [
+        347.24074840545654,
+        351.70337694883347,
+        375.3366861343384,
+        361.1378075480461
+      ]
+    },
+    {
+      "field_code": "KM1.18",
+      "value": "639179",
+      "unit": "GBP_M",
+      "ecl_basis": "NA",
+      "floor_basis": "NA",
+      "raw_text": "639,179",
+      "page": 6,
+      "bbox": [
+        345.32048416137695,
+        375.03109323978424,
+        374.60211181640625,
+        384.5533012151718
+      ]
+    },
+    {
+      "field_code": "KM1.19",
+      "value": "472285",
+      "unit": "GBP_M",
+      "ecl_basis": "NA",
+      "floor_basis": "NA",
+      "raw_text": "472,285",
+      "page": 6,
+      "bbox": [
+        345.9849920272827,
+        387.8659586906433,
+        375.3365087509155,
+        396.9927291870117
+      ]
+    },
+    {
+      "field_code": "KM1.20",
+      "value": "135.4",
+      "unit": "PERCENT",
+      "ecl_basis": "NA",
+      "floor_basis": "NA",
+      "raw_text": "135.4%",
+      "page": 6,
+      "bbox": [
+        346.75025367736816,
+        399.52519434690475,
+        375.06756591796875,
+        408.91481775045395
+      ]
+    }
+  ]
+}
