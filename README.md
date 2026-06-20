@@ -48,7 +48,7 @@ pip install -e ".[dev]"
 cp .env.example .env          # add your ANTHROPIC_API_KEY (only needed for the bounded LLM mapper)
 
 ruff check .                  # lint
-pytest -q                     # ~440 tests; integration tests are opt-in: -m integration
+pytest -q                     # 492 tests; integration tests are opt-in: -m integration
 ```
 
 ### CLI
